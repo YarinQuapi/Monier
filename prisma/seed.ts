@@ -2,6 +2,7 @@ import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { parseDatabaseUrl } from "../src/lib/db-url";
 
 // Bootstraps the first ADMIN user so the Admin Panel (category taxonomy
 // management) is reachable. Re-runnable via upsert.
@@ -10,7 +11,9 @@ import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 //   ADMIN_EMAIL="you@example.com"
 //   ADMIN_PASSWORD="a-strong-password"
 
-const adapter = new PrismaMariaDb(process.env.DATABASE_URL as string);
+const adapter = new PrismaMariaDb(
+  parseDatabaseUrl(process.env.DATABASE_URL as string)
+);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
