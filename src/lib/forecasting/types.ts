@@ -110,11 +110,12 @@ export interface CashFlowSummary {
   /** income.total - forecast.total for *this month alone*; positive means
    * a projected surplus for the month in isolation. */
   net: number;
-  /** All-time income received through the end of this month, minus all-time
-   * cash that has (or will have) left the accounts through the end of this
-   * month. Unlike `net`, this carries every prior month's surplus/deficit
+  /** The running account balance through the end of this month: every
+   * charge (purchase or subscription occurrence) ever removes from it as
+   * of its cash-outflow date, and every income entry ever adds to it as of
+   * the date it was received. Carries every prior month's surplus/deficit
    * forward instead of resetting to zero each month. */
-  cumulativeNet: number;
+  balance: number;
 }
 
 export interface DebtSummary {

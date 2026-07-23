@@ -55,7 +55,7 @@ export default async function DashboardPage({
     prisma.paymentMethod.findMany({ where: { userId: session.user.id } }),
   ]);
   const { cashFlow, debt } = summary;
-  const { forecast, income, net, cumulativeNet } = cashFlow;
+  const { forecast, income, balance } = cashFlow;
 
   const paymentMethodsById = new Map(paymentMethods.map((pm) => [pm.id, pm]));
 
@@ -171,7 +171,7 @@ export default async function DashboardPage({
               </Link>
             </div>
 
-            <div className={styles.statGrid4}>
+            <div className={styles.statGrid3}>
               <StatCard
                 label="Income"
                 value={formatCurrency(income.total)}
@@ -183,20 +183,14 @@ export default async function DashboardPage({
                 subtext={`across ${forecast.lineItems.length} payment method${forecast.lineItems.length === 1 ? "" : "s"}`}
               />
               <StatCard
-                label="This month's net"
-                value={formatCurrency(net)}
-                subtext={net >= 0 ? "projected surplus" : "projected shortfall"}
-                tone={net >= 0 ? "positive" : "negative"}
-              />
-              <StatCard
-                label="Running balance"
-                value={formatCurrency(cumulativeNet)}
+                label="Balance"
+                value={formatCurrency(balance)}
                 subtext={
-                  cumulativeNet >= 0
-                    ? "carried forward into next month"
-                    : "shortfall carried forward"
+                  balance >= 0
+                    ? "income added, charges removed, carried forward"
+                    : "in the red — carried forward"
                 }
-                tone={cumulativeNet >= 0 ? "positive" : "negative"}
+                tone={balance >= 0 ? "positive" : "negative"}
               />
             </div>
 

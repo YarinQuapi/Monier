@@ -142,8 +142,9 @@ export async function getIncomeSummaryForUser(
 
 /**
  * Sums all income a user has ever received, up through the end of the
- * calendar month containing `referenceDate` — the income-side half of the
- * running cumulative balance (see `computeCumulativeExpenses`).
+ * calendar month containing `referenceDate` — the "adds to the balance"
+ * half of the running balance (see `computeCumulativeExpenses` for the
+ * "removes from the balance" half).
  */
 export async function getCumulativeIncomeForUser(
   userId: string,
@@ -159,9 +160,10 @@ export async function getCumulativeIncomeForUser(
 
 /**
  * Combines the EOM expense forecast with the month's logged income into a
- * single net cash-flow picture: `net = income.total - forecast.total` for
- * the month alone, plus `cumulativeNet`, the running balance carried
- * forward from every prior month.
+ * single cash-flow picture: `net = income.total - forecast.total` for the
+ * month alone, plus `balance` — a running account balance where every
+ * income entry ever adds to it and every charge (purchase or subscription
+ * occurrence) ever removes from it, as of this month.
  */
 export async function getCashFlowSummaryForUser(
   userId: string,
@@ -186,7 +188,7 @@ export async function getCashFlowSummaryForUser(
     income,
     forecast,
     net: roundCurrency(income.total - forecast.total),
-    cumulativeNet: roundCurrency(cumulativeIncome - cumulativeExpenses),
+    balance: roundCurrency(cumulativeIncome - cumulativeExpenses),
   };
 }
 
@@ -232,7 +234,7 @@ export async function getDashboardSummaryForUser(
       income,
       forecast,
       net: roundCurrency(income.total - forecast.total),
-      cumulativeNet: roundCurrency(cumulativeIncome - cumulativeExpenses),
+      balance: roundCurrency(cumulativeIncome - cumulativeExpenses),
     },
     debt,
   };
