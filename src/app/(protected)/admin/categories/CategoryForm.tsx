@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { Button } from "@/components/ui/Button";
 import type { CategoryFormState } from "./actions";
 import styles from "./page.module.css";
 
@@ -73,9 +74,9 @@ export function CategoryForm({
 
       {state?.error && <p className={styles.error}>{state.error}</p>}
 
-      <button className={styles.submit} type="submit" disabled={pending}>
+      <Button type="submit" disabled={pending} className={styles.submit}>
         {pending ? "Saving..." : submitLabel}
-      </button>
+      </Button>
     </form>
   );
 }

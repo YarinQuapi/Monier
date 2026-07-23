@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { verifySession } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
+import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Button } from "@/components/ui/Button";
 import {
   createPaymentMethod,
   deletePaymentMethod,
@@ -24,13 +29,10 @@ export default async function PaymentMethodsPage({
 
   return (
     <div className={styles.wrapper}>
-      <div>
-        <h1>Payment Methods</h1>
-        <p>
-          Credit cards and bank accounts. Every subscription (and, if
-          applicable, purchase) is linked to one of these.
-        </p>
-      </div>
+      <PageHeader
+        title="Payment Methods"
+        description="Credit cards and bank accounts. Every subscription (and, if applicable, purchase) is linked to one of these."
+      />
 
       {error === "in-use" && (
         <p className={styles.banner}>
@@ -40,13 +42,13 @@ export default async function PaymentMethodsPage({
         </p>
       )}
 
-      <section className={styles.section}>
-        <h2>Your payment methods ({paymentMethods.length})</h2>
+      <Card>
+        <h2 className={styles.sectionTitle}>
+          Your payment methods ({paymentMethods.length})
+        </h2>
 
         {paymentMethods.length === 0 ? (
-          <p className={styles.empty}>
-            No payment methods yet — add one below.
-          </p>
+          <EmptyState>No payment methods yet — add one below.</EmptyState>
         ) : (
           <table className={styles.table}>
             <thead>
@@ -63,16 +65,16 @@ export default async function PaymentMethodsPage({
                   key={pm.id}
                   className={pm.isActive ? undefined : styles.inactive}
                 >
-                  <td>
+                  <td className={styles.nicknameCell}>
                     {pm.nickname}
                     {pm.institution ? ` (${pm.institution})` : ""}
                   </td>
                   <td>
-                    <span className={styles.badge}>
+                    <Badge tone={pm.type === "CREDIT_CARD" ? "primary" : "neutral"}>
                       {pm.type === "CREDIT_CARD" ? "Credit card" : "Bank account"}
-                    </span>
+                    </Badge>
                   </td>
-                  <td>
+                  <td className={styles.muted}>
                     {pm.type === "CREDIT_CARD"
                       ? `Cycle starts ${pm.cycleStartDay} · due ${pm.paymentDueDay} (+${pm.dueMonthOffset}mo)`
                       : "—"}
@@ -92,15 +94,15 @@ export default async function PaymentMethodsPage({
                           name="isActive"
                           value={String(pm.isActive)}
                         />
-                        <button className={styles.toggleButton} type="submit">
+                        <Button variant="secondary" type="submit">
                           {pm.isActive ? "Deactivate" : "Activate"}
-                        </button>
+                        </Button>
                       </form>
                       <form action={deletePaymentMethod}>
                         <input type="hidden" name="paymentMethodId" value={pm.id} />
-                        <button className={styles.deleteButton} type="submit">
+                        <Button variant="danger" type="submit">
                           Delete
-                        </button>
+                        </Button>
                       </form>
                     </div>
                   </td>
@@ -109,15 +111,15 @@ export default async function PaymentMethodsPage({
             </tbody>
           </table>
         )}
-      </section>
+      </Card>
 
-      <section className={styles.section}>
-        <h2>Add a payment method</h2>
+      <Card>
+        <h2 className={styles.sectionTitle}>Add a payment method</h2>
         <PaymentMethodForm
           action={createPaymentMethod}
           submitLabel="Add payment method"
         />
-      </section>
+      </Card>
     </div>
   );
 }

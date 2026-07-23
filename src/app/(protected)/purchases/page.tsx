@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { verifySession } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Button } from "@/components/ui/Button";
 import { createPurchase, deletePurchase } from "./actions";
 import { PurchaseForm } from "./PurchaseForm";
 import styles from "./page.module.css";
@@ -27,19 +31,16 @@ export default async function PurchasesPage() {
 
   return (
     <div className={styles.wrapper}>
-      <div>
-        <h1>Purchases</h1>
-        <p>
-          One-off expenses, tagged against the admin-managed category
-          taxonomy and optionally linked to a payment method.
-        </p>
-      </div>
+      <PageHeader
+        title="Purchases"
+        description="One-off expenses, tagged against the admin-managed category taxonomy and optionally linked to a payment method."
+      />
 
-      <section className={styles.section}>
-        <h2>Your purchases ({purchases.length})</h2>
+      <Card>
+        <h2 className={styles.sectionTitle}>Your purchases ({purchases.length})</h2>
 
         {purchases.length === 0 ? (
-          <p className={styles.empty}>No purchases yet — add one below.</p>
+          <EmptyState>No purchases yet — add one below.</EmptyState>
         ) : (
           <table className={styles.table}>
             <thead>
@@ -57,16 +58,18 @@ export default async function PurchasesPage() {
                 <tr key={purchase.id}>
                   <td>{formatDate(purchase.purchaseDate)}</td>
                   <td>
-                    {purchase.category.color && (
-                      <span
-                        className={styles.swatch}
-                        style={{ backgroundColor: purchase.category.color }}
-                      />
-                    )}
-                    {purchase.category.name}
+                    <span className={styles.categoryCell}>
+                      {purchase.category.color && (
+                        <span
+                          className={styles.swatch}
+                          style={{ backgroundColor: purchase.category.color }}
+                        />
+                      )}
+                      {purchase.category.name}
+                    </span>
                   </td>
                   <td>{purchase.merchant ?? "—"}</td>
-                  <td>${purchase.amount.toString()}</td>
+                  <td className={styles.amount}>${purchase.amount.toString()}</td>
                   <td>{purchase.paymentMethod?.nickname ?? "Cash / none"}</td>
                   <td>
                     <div className={styles.rowActions}>
@@ -78,9 +81,9 @@ export default async function PurchasesPage() {
                       </Link>
                       <form action={deletePurchase}>
                         <input type="hidden" name="purchaseId" value={purchase.id} />
-                        <button className={styles.deleteButton} type="submit">
+                        <Button variant="danger" type="submit">
                           Delete
-                        </button>
+                        </Button>
                       </form>
                     </div>
                   </td>
@@ -89,23 +92,23 @@ export default async function PurchasesPage() {
             </tbody>
           </table>
         )}
-      </section>
+      </Card>
 
-      <section className={styles.section}>
-        <h2>Add a purchase</h2>
+      <Card>
+        <h2 className={styles.sectionTitle}>Add a purchase</h2>
 
         {categories.length === 0 ? (
-          <p className={styles.noCategories}>
+          <EmptyState>
             No categories exist yet.{" "}
             {session.user.role === "ADMIN" ? (
               <>
-                Create one in the{" "}
-                <Link href="/admin/categories">Admin panel</Link> first.
+                Create one in the <Link href="/admin/categories">Admin panel</Link>{" "}
+                first.
               </>
             ) : (
               "Ask an admin to add some before logging a purchase."
             )}
-          </p>
+          </EmptyState>
         ) : (
           <PurchaseForm
             action={createPurchase}
@@ -114,7 +117,7 @@ export default async function PurchasesPage() {
             paymentMethods={paymentMethods}
           />
         )}
-      </section>
+      </Card>
     </div>
   );
 }

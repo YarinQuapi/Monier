@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { verifySession } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
+import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Button } from "@/components/ui/Button";
 import {
   createSubscription,
   deleteSubscription,
@@ -35,24 +40,22 @@ export default async function SubscriptionsPage({
 
   return (
     <div className={styles.wrapper}>
-      <div>
-        <h1>Subscriptions</h1>
-        <p>
-          Ongoing-monthly or fixed-term subscriptions, each linked to a
-          payment method. Multiple accounts with the same provider are
-          distinguished by their account label.
-        </p>
-      </div>
+      <PageHeader
+        title="Subscriptions"
+        description="Ongoing-monthly or fixed-term subscriptions, each linked to a payment method. Multiple accounts with the same provider are distinguished by their account label."
+      />
 
       {error === "delete-failed" && (
         <p className={styles.banner}>Couldn&apos;t delete that subscription.</p>
       )}
 
-      <section className={styles.section}>
-        <h2>Your subscriptions ({subscriptions.length})</h2>
+      <Card>
+        <h2 className={styles.sectionTitle}>
+          Your subscriptions ({subscriptions.length})
+        </h2>
 
         {subscriptions.length === 0 ? (
-          <p className={styles.empty}>No subscriptions yet — add one below.</p>
+          <EmptyState>No subscriptions yet — add one below.</EmptyState>
         ) : (
           <table className={styles.table}>
             <thead>
@@ -71,20 +74,20 @@ export default async function SubscriptionsPage({
                   className={sub.isActive ? undefined : styles.inactive}
                 >
                   <td>
-                    {sub.providerName}
+                    <span className={styles.providerCell}>{sub.providerName}</span>
                     <br />
-                    <small>{sub.accountLabel}</small>
+                    <small className={styles.muted}>{sub.accountLabel}</small>
                   </td>
-                  <td>${sub.amount.toString()}</td>
+                  <td className={styles.amount}>${sub.amount.toString()}</td>
                   <td>{sub.paymentMethod.nickname}</td>
                   <td>
-                    <span className={styles.badge}>
+                    <Badge tone={sub.billingType === "FIXED_TERM" ? "warning" : "primary"}>
                       {sub.billingType === "FIXED_TERM"
                         ? `Fixed term: ${sub.totalMonths}mo`
                         : "Ongoing monthly"}
-                    </span>
+                    </Badge>
                     <br />
-                    <small>from {formatDate(sub.startDate)}</small>
+                    <small className={styles.muted}>from {formatDate(sub.startDate)}</small>
                   </td>
                   <td>
                     <div className={styles.rowActions}>
@@ -101,15 +104,15 @@ export default async function SubscriptionsPage({
                           name="isActive"
                           value={String(sub.isActive)}
                         />
-                        <button className={styles.toggleButton} type="submit">
+                        <Button variant="secondary" type="submit">
                           {sub.isActive ? "Deactivate" : "Activate"}
-                        </button>
+                        </Button>
                       </form>
                       <form action={deleteSubscription}>
                         <input type="hidden" name="subscriptionId" value={sub.id} />
-                        <button className={styles.deleteButton} type="submit">
+                        <Button variant="danger" type="submit">
                           Delete
-                        </button>
+                        </Button>
                       </form>
                     </div>
                   </td>
@@ -118,17 +121,17 @@ export default async function SubscriptionsPage({
             </tbody>
           </table>
         )}
-      </section>
+      </Card>
 
-      <section className={styles.section}>
-        <h2>Add a subscription</h2>
+      <Card>
+        <h2 className={styles.sectionTitle}>Add a subscription</h2>
 
         {paymentMethods.length === 0 ? (
-          <p className={styles.noPaymentMethods}>
+          <EmptyState>
             You need at least one active{" "}
-            <Link href="/payment-methods">payment method</Link> before adding
-            a subscription.
-          </p>
+            <Link href="/payment-methods">payment method</Link> before adding a
+            subscription.
+          </EmptyState>
         ) : (
           <SubscriptionForm
             action={createSubscription}
@@ -136,7 +139,7 @@ export default async function SubscriptionsPage({
             paymentMethods={paymentMethods}
           />
         )}
-      </section>
+      </Card>
     </div>
   );
 }

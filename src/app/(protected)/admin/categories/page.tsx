@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { verifyAdmin } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Button } from "@/components/ui/Button";
 import { createCategory, deleteCategory } from "./actions";
 import { CategoryForm } from "./CategoryForm";
 import styles from "./page.module.css";
@@ -19,13 +23,10 @@ export default async function AdminCategoriesPage({
 
   return (
     <div className={styles.wrapper}>
-      <div>
-        <h1>Admin: Categories</h1>
-        <p>
-          This is the global taxonomy every user picks from when tagging a
-          purchase. Only admins can create, edit, or remove categories.
-        </p>
-      </div>
+      <PageHeader
+        title="Admin: Categories"
+        description="This is the global taxonomy every user picks from when tagging a purchase. Only admins can create, edit, or remove categories."
+      />
 
       {error === "in-use" && (
         <p className={styles.banner}>
@@ -34,11 +35,13 @@ export default async function AdminCategoriesPage({
         </p>
       )}
 
-      <section className={styles.section}>
-        <h2>Existing categories ({categories.length})</h2>
+      <Card>
+        <h2 className={styles.sectionTitle}>
+          Existing categories ({categories.length})
+        </h2>
 
         {categories.length === 0 ? (
-          <p className={styles.empty}>No categories yet — add the first one below.</p>
+          <EmptyState>No categories yet — add the first one below.</EmptyState>
         ) : (
           <table className={styles.table}>
             <thead>
@@ -52,16 +55,18 @@ export default async function AdminCategoriesPage({
               {categories.map((category) => (
                 <tr key={category.id}>
                   <td>
-                    {category.color && (
-                      <span
-                        className={styles.swatch}
-                        style={{ backgroundColor: category.color }}
-                      />
-                    )}
-                    {category.icon ? `${category.icon} ` : ""}
-                    {category.name}
+                    <span className={styles.nameCell}>
+                      {category.color && (
+                        <span
+                          className={styles.swatch}
+                          style={{ backgroundColor: category.color }}
+                        />
+                      )}
+                      {category.icon ? `${category.icon} ` : ""}
+                      {category.name}
+                    </span>
                   </td>
-                  <td>{category.description ?? "—"}</td>
+                  <td className={styles.muted}>{category.description ?? "—"}</td>
                   <td>
                     <div className={styles.rowActions}>
                       <Link
@@ -76,9 +81,9 @@ export default async function AdminCategoriesPage({
                           name="categoryId"
                           value={category.id}
                         />
-                        <button className={styles.deleteButton} type="submit">
+                        <Button variant="danger" type="submit">
                           Delete
-                        </button>
+                        </Button>
                       </form>
                     </div>
                   </td>
@@ -87,12 +92,12 @@ export default async function AdminCategoriesPage({
             </tbody>
           </table>
         )}
-      </section>
+      </Card>
 
-      <section className={styles.section}>
-        <h2>Add a new category</h2>
+      <Card>
+        <h2 className={styles.sectionTitle}>Add a new category</h2>
         <CategoryForm action={createCategory} submitLabel="Create category" />
-      </section>
+      </Card>
     </div>
   );
 }

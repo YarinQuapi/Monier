@@ -5,9 +5,10 @@ export default function Home() {
   return (
     <div className={styles.page}>
       <main className={styles.main}>
-        <h1>Money Management System</h1>
-        <p>
-          Track income, purchases, subscriptions, and forecast your
+        <span className={styles.brandMark}>$</span>
+        <h1 className={styles.title}>Money Management System</h1>
+        <p className={styles.subtitle}>
+          Track income, purchases, and subscriptions, and forecast your
           end-of-month cash requirements across multiple credit cards and
           bank accounts.
         </p>

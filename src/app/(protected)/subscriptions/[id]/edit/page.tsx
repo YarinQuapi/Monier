@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { verifySession } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
+import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { updateSubscription } from "../../actions";
 import { SubscriptionForm } from "../../SubscriptionForm";
 import styles from "../../page.module.css";
@@ -41,27 +43,29 @@ export default async function EditSubscriptionPage({
         <Link className={styles.backLink} href="/subscriptions">
           &larr; Back to subscriptions
         </Link>
-        <h1>Edit subscription</h1>
+        <PageHeader title="Edit subscription" />
       </div>
 
-      <SubscriptionForm
-        action={boundUpdateSubscription}
-        submitLabel="Save changes"
-        paymentMethods={paymentMethods}
-        defaultValues={{
-          providerName: subscription.providerName,
-          accountLabel: subscription.accountLabel,
-          amount: Number(subscription.amount),
-          paymentMethodId: subscription.paymentMethodId,
-          billingType: subscription.billingType,
-          startDate: toDateInputValue(subscription.startDate),
-          totalMonths: subscription.totalMonths,
-          endDate: subscription.endDate
-            ? toDateInputValue(subscription.endDate)
-            : null,
-          notes: subscription.notes,
-        }}
-      />
+      <Card>
+        <SubscriptionForm
+          action={boundUpdateSubscription}
+          submitLabel="Save changes"
+          paymentMethods={paymentMethods}
+          defaultValues={{
+            providerName: subscription.providerName,
+            accountLabel: subscription.accountLabel,
+            amount: Number(subscription.amount),
+            paymentMethodId: subscription.paymentMethodId,
+            billingType: subscription.billingType,
+            startDate: toDateInputValue(subscription.startDate),
+            totalMonths: subscription.totalMonths,
+            endDate: subscription.endDate
+              ? toDateInputValue(subscription.endDate)
+              : null,
+            notes: subscription.notes,
+          }}
+        />
+      </Card>
     </div>
   );
 }

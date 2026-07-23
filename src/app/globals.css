@@ -1,13 +1,52 @@
+/* ---------------------------------------------------------------------------
+ * Design tokens — modern SaaS/fintech look, indigo accent, light theme only.
+ * Every page.module.css in the app should style itself using these
+ * variables (colors, radius, shadow) rather than hardcoding values, so a
+ * future palette/theme change only has to happen here.
+ * ------------------------------------------------------------------------ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  /* Neutrals */
+  --color-bg: #f6f7fb;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f9fafc;
+  --color-border: #e6e8f0;
+  --color-border-strong: #d7dae6;
+  --color-text: #14152b;
+  --color-text-muted: #6b7086;
+  --color-text-faint: #9297ab;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Brand */
+  --color-primary: #6366f1;
+  --color-primary-hover: #4f46e5;
+  --color-primary-soft: #eef0ff;
+  --color-primary-text: #4338ca;
+
+  /* Status */
+  --color-success: #15803d;
+  --color-success-soft: #e7f7ed;
+  --color-danger: #dc2626;
+  --color-danger-soft: #fdecec;
+  --color-warning: #b45309;
+  --color-warning-soft: #fef3e2;
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-pill: 999px;
+
+  /* Shadow */
+  --shadow-sm: 0 1px 2px rgba(20, 21, 43, 0.05);
+  --shadow-md: 0 6px 16px rgba(20, 21, 43, 0.07);
+  --shadow-lg: 0 16px 40px rgba(20, 21, 43, 0.12);
+
+  /* Type */
+  --font-sans: var(--font-geist-sans), "Segoe UI", system-ui, -apple-system,
+    sans-serif;
+  --font-mono: var(--font-geist-mono), "SFMono-Regular", Consolas, monospace;
+
+  --background: var(--color-bg);
+  --foreground: var(--color-text);
 }
 
 html {
@@ -24,9 +63,11 @@ body {
   min-height: 100%;
   display: flex;
   flex-direction: column;
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--color-text);
+  background: var(--color-bg);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -42,8 +83,32 @@ a {
   text-decoration: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
+h1,
+h2,
+h3 {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+::selection {
+  background: var(--color-primary-soft);
+}
+
+/* Scrollbar polish (Chromium/Edge/Safari) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: var(--radius-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-faint);
 }

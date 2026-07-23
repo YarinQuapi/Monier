@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { verifySession } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
+import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Button } from "@/components/ui/Button";
 import { createIncome, deleteIncome } from "./actions";
 import { IncomeForm } from "./IncomeForm";
 import styles from "./page.module.css";
@@ -19,16 +24,16 @@ export default async function IncomePage() {
 
   return (
     <div className={styles.wrapper}>
-      <div>
-        <h1>Income</h1>
-        <p>Manually logged salary and miscellaneous income entries.</p>
-      </div>
+      <PageHeader
+        title="Income"
+        description="Manually logged salary and miscellaneous income entries."
+      />
 
-      <section className={styles.section}>
-        <h2>Your income ({incomes.length})</h2>
+      <Card>
+        <h2 className={styles.sectionTitle}>Your income ({incomes.length})</h2>
 
         {incomes.length === 0 ? (
-          <p className={styles.empty}>No income logged yet — add one below.</p>
+          <EmptyState>No income logged yet — add one below.</EmptyState>
         ) : (
           <table className={styles.table}>
             <thead>
@@ -45,12 +50,12 @@ export default async function IncomePage() {
                 <tr key={income.id}>
                   <td>{formatDate(income.receivedAt)}</td>
                   <td>
-                    <span className={styles.badge}>
+                    <Badge tone={income.type === "SALARY" ? "success" : "neutral"}>
                       {income.type === "SALARY" ? "Salary" : "Misc"}
-                    </span>
+                    </Badge>
                   </td>
                   <td>{income.label}</td>
-                  <td>${income.amount.toString()}</td>
+                  <td className={styles.amount}>${income.amount.toString()}</td>
                   <td>
                     <div className={styles.rowActions}>
                       <Link
@@ -61,9 +66,9 @@ export default async function IncomePage() {
                       </Link>
                       <form action={deleteIncome}>
                         <input type="hidden" name="incomeId" value={income.id} />
-                        <button className={styles.deleteButton} type="submit">
+                        <Button variant="danger" type="submit">
                           Delete
-                        </button>
+                        </Button>
                       </form>
                     </div>
                   </td>
@@ -72,12 +77,12 @@ export default async function IncomePage() {
             </tbody>
           </table>
         )}
-      </section>
+      </Card>
 
-      <section className={styles.section}>
-        <h2>Add income</h2>
+      <Card>
+        <h2 className={styles.sectionTitle}>Add income</h2>
         <IncomeForm action={createIncome} submitLabel="Add income" />
-      </section>
+      </Card>
     </div>
   );
 }

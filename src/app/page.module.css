@@ -1,30 +1,67 @@
 .page {
   min-height: 100vh;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 2rem;
+  background:
+    radial-gradient(circle at 15% 15%, var(--color-primary-soft) 0%, transparent 45%),
+    radial-gradient(circle at 85% 85%, var(--color-primary-soft) 0%, transparent 40%),
+    var(--color-bg);
 }
 
 .main {
-  max-width: 640px;
+  max-width: 620px;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.1rem;
   text-align: center;
   align-items: center;
+}
+
+.brandMark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.6rem;
+  margin-bottom: 0.5rem;
+  box-shadow: var(--shadow-md);
+}
+
+.title {
+  font-size: 2rem;
+}
+
+.subtitle {
+  color: var(--color-text-muted);
+  font-size: 1rem;
+  line-height: 1.6;
 }
 
 .ctas {
   display: flex;
   gap: 1rem;
+  margin-top: 0.5rem;
 }
 
 .primary {
-  padding: 0.6rem 1.5rem;
-  border-radius: 6px;
-  background: #171717;
+  padding: 0.7rem 1.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
   color: #fff;
-  text-decoration: none;
   font-weight: 600;
+  font-size: 0.9rem;
+  box-shadow: var(--shadow-md);
+  transition: background-color 0.15s ease;
+}
+
+.primary:hover {
+  background: var(--color-primary-hover);
 }

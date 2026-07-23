@@ -1,0 +1,37 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 1.1rem 1.25rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-faint);
+}
+
+.value {
+  font-size: 1.7rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.subtext {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.positive .value {
+  color: var(--color-success);
+}
+
+.negative .value {
+  color: var(--color-danger);
+}

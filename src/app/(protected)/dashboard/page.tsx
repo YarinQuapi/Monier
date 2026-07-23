@@ -2,6 +2,11 @@ import Link from "next/link";
 import { verifySession } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { getDashboardSummaryForUser } from "@/lib/forecasting/getForecast";
+import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { StatCard } from "@/components/ui/StatCard";
 import styles from "./page.module.css";
 
 function parseMonthParam(month: string | undefined): Date {
@@ -64,35 +69,31 @@ export default async function DashboardPage({
 
   return (
     <div className={styles.wrapper}>
-      <div>
-        <h1>Dashboard</h1>
-        <p>Welcome, {session.user.email}.</p>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        description={`Welcome back, ${session.user.name ?? session.user.email}.`}
+      />
 
-      <section className={styles.section}>
-        <h2>Total debt</h2>
+      <Card>
+        <div className={styles.sectionHeading}>
+          <h2>Total debt</h2>
+          <span className={styles.sectionSubtext}>as of today</span>
+        </div>
 
-        <section className={styles.statGrid}>
-          <div className={styles.statCard}>
-            <span className={styles.statLabel}>Total debt</span>
-            <span className={styles.statValue}>{formatCurrency(debt.total)}</span>
-            <span className={styles.statSubtext}>
-              outstanding across {debt.lineItems.length} payment method
-              {debt.lineItems.length === 1 ? "" : "s"}
-            </span>
-          </div>
-          <div className={styles.statCard}>
-            <span className={styles.statLabel}>Payoff ETA</span>
-            <span className={styles.statValue}>
-              {debt.payoffEta ? formatDate(debt.payoffEta) : "—"}
-            </span>
-            <span className={styles.statSubtext}>
-              {debt.payoffEta
-                ? "assuming no new charges are added"
-                : "no outstanding debt"}
-            </span>
-          </div>
-        </section>
+        <div className={styles.statGrid}>
+          <StatCard
+            label="Total debt"
+            value={formatCurrency(debt.total)}
+            subtext={`outstanding across ${debt.lineItems.length} payment method${debt.lineItems.length === 1 ? "" : "s"}`}
+          />
+          <StatCard
+            label="Payoff ETA"
+            value={debt.payoffEta ? formatDate(debt.payoffEta) : "—"}
+            subtext={
+              debt.payoffEta ? "assuming no new charges are added" : "no outstanding debt"
+            }
+          />
+        </div>
 
         {debt.lineItems.length > 0 && (
           <table className={styles.table}>
@@ -109,13 +110,16 @@ export default async function DashboardPage({
                 return (
                   <tr key={item.paymentMethodId}>
                     <td>
-                      {paymentMethod?.nickname ?? "Unknown payment method"}
-                      <br />
-                      <small className={styles.muted}>
-                        {paymentMethod?.type === "CREDIT_CARD"
-                          ? "Credit card"
-                          : "Bank account"}
-                      </small>
+                      <div className={styles.methodCell}>
+                        <span className={styles.methodName}>
+                          {paymentMethod?.nickname ?? "Unknown payment method"}
+                        </span>
+                        <Badge tone="neutral">
+                          {paymentMethod?.type === "CREDIT_CARD"
+                            ? "Credit card"
+                            : "Bank account"}
+                        </Badge>
+                      </div>
                     </td>
                     <td className={styles.amount}>{formatCurrency(item.amountDue)}</td>
                     <td>
@@ -124,11 +128,9 @@ export default async function DashboardPage({
                           <li
                             key={`${charge.source}-${charge.sourceId}-${charge.chargeDate.toISOString()}`}
                           >
-                            <span className={styles.chargeBadge}>
-                              {charge.source === "SUBSCRIPTION"
-                                ? "Subscription"
-                                : "Purchase"}
-                            </span>{" "}
+                            <Badge tone={charge.source === "SUBSCRIPTION" ? "primary" : "neutral"}>
+                              {charge.source === "SUBSCRIPTION" ? "Subscription" : "Purchase"}
+                            </Badge>{" "}
                             {formatCurrency(charge.amount)} charged{" "}
                             {formatDate(charge.chargeDate)} — paid off{" "}
                             {formatDate(charge.cashOutflowDate)}
@@ -142,134 +144,129 @@ export default async function DashboardPage({
             </tbody>
           </table>
         )}
-      </section>
+      </Card>
 
-      <div className={styles.forecastHeader}>
-        <Link
-          href={`/dashboard?month=${formatMonthParam(prevMonth)}`}
-          className={styles.navLink}
-        >
-          &larr; Prev
-        </Link>
-        <div className={styles.forecastTitle}>
-          <h2>Cash flow</h2>
-          <span>
-            {formatMonthLabel(referenceDate)}
-            {isCurrentMonth ? " (current)" : ""}
-          </span>
+      <Card>
+        <div className={styles.monthNav}>
+          <Link
+            href={`/dashboard?month=${formatMonthParam(prevMonth)}`}
+            className={styles.navLink}
+          >
+            &larr; Prev
+          </Link>
+          <div className={styles.monthNavTitle}>
+            <h2>Cash flow</h2>
+            <span className={styles.sectionSubtext}>
+              {formatMonthLabel(referenceDate)}
+              {isCurrentMonth ? " (current)" : ""}
+            </span>
+          </div>
+          <Link
+            href={`/dashboard?month=${formatMonthParam(nextMonth)}`}
+            className={styles.navLink}
+          >
+            Next &rarr;
+          </Link>
         </div>
-        <Link
-          href={`/dashboard?month=${formatMonthParam(nextMonth)}`}
-          className={styles.navLink}
-        >
-          Next &rarr;
-        </Link>
-      </div>
 
-      <section className={styles.statGrid}>
-        <div className={styles.statCard}>
-          <span className={styles.statLabel}>Income</span>
-          <span className={styles.statValue}>{formatCurrency(income.total)}</span>
-          <span className={styles.statSubtext}>
-            {income.entries.length} entr{income.entries.length === 1 ? "y" : "ies"}
-          </span>
+        <div className={styles.statGrid3}>
+          <StatCard
+            label="Income"
+            value={formatCurrency(income.total)}
+            subtext={`${income.entries.length} entr${income.entries.length === 1 ? "y" : "ies"}`}
+          />
+          <StatCard
+            label="Cash needed"
+            value={formatCurrency(forecast.total)}
+            subtext={`across ${forecast.lineItems.length} payment method${forecast.lineItems.length === 1 ? "" : "s"}`}
+          />
+          <StatCard
+            label="Net"
+            value={formatCurrency(net)}
+            subtext={net >= 0 ? "projected surplus" : "projected shortfall"}
+            tone={net >= 0 ? "positive" : "negative"}
+          />
         </div>
-        <div className={styles.statCard}>
-          <span className={styles.statLabel}>Cash needed</span>
-          <span className={styles.statValue}>{formatCurrency(forecast.total)}</span>
-          <span className={styles.statSubtext}>
-            across {forecast.lineItems.length} payment method
-            {forecast.lineItems.length === 1 ? "" : "s"}
-          </span>
-        </div>
-        <div
-          className={`${styles.statCard} ${net >= 0 ? styles.statPositive : styles.statNegative}`}
-        >
-          <span className={styles.statLabel}>Net</span>
-          <span className={styles.statValue}>{formatCurrency(net)}</span>
-          <span className={styles.statSubtext}>
-            {net >= 0 ? "projected surplus" : "projected shortfall"}
-          </span>
-        </div>
-      </section>
 
-      {income.entries.length > 0 && (
-        <section className={styles.section}>
-          <h2>Income this month</h2>
-          <ul className={styles.chargeList}>
-            {income.entries.map((entry) => (
-              <li key={entry.id}>
-                <span className={styles.chargeBadge}>
-                  {entry.type === "SALARY" ? "Salary" : "Misc"}
-                </span>{" "}
-                {entry.label} — {formatCurrency(entry.amount)} on{" "}
-                {formatDate(entry.receivedAt)}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <section className={styles.section}>
-        <h2>Cash needed by payment method</h2>
-
-        {forecast.lineItems.length === 0 ? (
-          <p className={styles.empty}>
-            No charges are projected to hit your accounts this month.
-          </p>
-        ) : (
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Payment method</th>
-                <th>Amount due</th>
-                <th>Charges</th>
-              </tr>
-            </thead>
-            <tbody>
-              {forecast.lineItems.map((item) => {
-                const paymentMethod = paymentMethodsById.get(item.paymentMethodId);
-                return (
-                  <tr key={item.paymentMethodId}>
-                    <td>
-                      {paymentMethod?.nickname ?? "Unknown payment method"}
-                      <br />
-                      <small className={styles.muted}>
-                        {paymentMethod?.type === "CREDIT_CARD"
-                          ? "Credit card"
-                          : "Bank account"}
-                      </small>
-                    </td>
-                    <td className={styles.amount}>
-                      {formatCurrency(item.amountDue)}
-                    </td>
-                    <td>
-                      <ul className={styles.chargeList}>
-                        {item.charges.map((charge) => (
-                          <li
-                            key={`${charge.source}-${charge.sourceId}-${charge.chargeDate.toISOString()}`}
-                          >
-                            <span className={styles.chargeBadge}>
-                              {charge.source === "SUBSCRIPTION"
-                                ? "Subscription"
-                                : "Purchase"}
-                            </span>{" "}
-                            {formatCurrency(charge.amount)} charged{" "}
-                            {formatDate(charge.chargeDate)}
-                            {paymentMethod?.type === "CREDIT_CARD"
-                              ? ` — due ${formatDate(charge.cashOutflowDate)}`
-                              : ""}
-                          </li>
-                        ))}
-                      </ul>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        {income.entries.length > 0 && (
+          <div className={styles.subsection}>
+            <h3>Income this month</h3>
+            <ul className={styles.chargeList}>
+              {income.entries.map((entry) => (
+                <li key={entry.id}>
+                  <Badge tone={entry.type === "SALARY" ? "success" : "neutral"}>
+                    {entry.type === "SALARY" ? "Salary" : "Misc"}
+                  </Badge>{" "}
+                  {entry.label} — {formatCurrency(entry.amount)} on{" "}
+                  {formatDate(entry.receivedAt)}
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
-      </section>
+
+        <div className={styles.subsection}>
+          <h3>Cash needed by payment method</h3>
+
+          {forecast.lineItems.length === 0 ? (
+            <EmptyState>
+              No charges are projected to hit your accounts this month.
+            </EmptyState>
+          ) : (
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Payment method</th>
+                  <th>Amount due</th>
+                  <th>Charges</th>
+                </tr>
+              </thead>
+              <tbody>
+                {forecast.lineItems.map((item) => {
+                  const paymentMethod = paymentMethodsById.get(item.paymentMethodId);
+                  return (
+                    <tr key={item.paymentMethodId}>
+                      <td>
+                        <div className={styles.methodCell}>
+                          <span className={styles.methodName}>
+                            {paymentMethod?.nickname ?? "Unknown payment method"}
+                          </span>
+                          <Badge tone="neutral">
+                            {paymentMethod?.type === "CREDIT_CARD"
+                              ? "Credit card"
+                              : "Bank account"}
+                          </Badge>
+                        </div>
+                      </td>
+                      <td className={styles.amount}>
+                        {formatCurrency(item.amountDue)}
+                      </td>
+                      <td>
+                        <ul className={styles.chargeList}>
+                          {item.charges.map((charge) => (
+                            <li
+                              key={`${charge.source}-${charge.sourceId}-${charge.chargeDate.toISOString()}`}
+                            >
+                              <Badge tone={charge.source === "SUBSCRIPTION" ? "primary" : "neutral"}>
+                                {charge.source === "SUBSCRIPTION" ? "Subscription" : "Purchase"}
+                              </Badge>{" "}
+                              {formatCurrency(charge.amount)} charged{" "}
+                              {formatDate(charge.chargeDate)}
+                              {paymentMethod?.type === "CREDIT_CARD"
+                                ? ` — due ${formatDate(charge.cashOutflowDate)}`
+                                : ""}
+                            </li>
+                          ))}
+                        </ul>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </Card>
     </div>
   );
 }

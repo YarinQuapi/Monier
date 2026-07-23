@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { verifySession } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
+import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { updatePaymentMethod } from "../../actions";
 import { PaymentMethodForm } from "../../PaymentMethodForm";
 import styles from "../../page.module.css";
@@ -33,21 +35,23 @@ export default async function EditPaymentMethodPage({
         <Link className={styles.backLink} href="/payment-methods">
           &larr; Back to payment methods
         </Link>
-        <h1>Edit payment method</h1>
+        <PageHeader title="Edit payment method" />
       </div>
 
-      <PaymentMethodForm
-        action={boundUpdatePaymentMethod}
-        submitLabel="Save changes"
-        defaultValues={{
-          type: paymentMethod.type,
-          nickname: paymentMethod.nickname,
-          institution: paymentMethod.institution,
-          cycleStartDay: paymentMethod.cycleStartDay,
-          paymentDueDay: paymentMethod.paymentDueDay,
-          dueMonthOffset: paymentMethod.dueMonthOffset,
-        }}
-      />
+      <Card>
+        <PaymentMethodForm
+          action={boundUpdatePaymentMethod}
+          submitLabel="Save changes"
+          defaultValues={{
+            type: paymentMethod.type,
+            nickname: paymentMethod.nickname,
+            institution: paymentMethod.institution,
+            cycleStartDay: paymentMethod.cycleStartDay,
+            paymentDueDay: paymentMethod.paymentDueDay,
+            dueMonthOffset: paymentMethod.dueMonthOffset,
+          }}
+        />
+      </Card>
     </div>
   );
 }

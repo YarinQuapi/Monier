@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { verifySession } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
+import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { updateIncome } from "../../actions";
 import { IncomeForm } from "../../IncomeForm";
 import styles from "../../page.module.css";
@@ -32,20 +34,22 @@ export default async function EditIncomePage({
         <Link className={styles.backLink} href="/income">
           &larr; Back to income
         </Link>
-        <h1>Edit income</h1>
+        <PageHeader title="Edit income" />
       </div>
 
-      <IncomeForm
-        action={boundUpdateIncome}
-        submitLabel="Save changes"
-        defaultValues={{
-          type: income.type,
-          label: income.label,
-          amount: Number(income.amount),
-          receivedAt: toDateInputValue(income.receivedAt),
-          notes: income.notes,
-        }}
-      />
+      <Card>
+        <IncomeForm
+          action={boundUpdateIncome}
+          submitLabel="Save changes"
+          defaultValues={{
+            type: income.type,
+            label: income.label,
+            amount: Number(income.amount),
+            receivedAt: toDateInputValue(income.receivedAt),
+            notes: income.notes,
+          }}
+        />
+      </Card>
     </div>
   );
 }

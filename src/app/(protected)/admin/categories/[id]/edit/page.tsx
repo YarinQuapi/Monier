@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { verifyAdmin } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
+import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { updateCategory } from "../../actions";
 import { CategoryForm } from "../../CategoryForm";
 import styles from "../../page.module.css";
@@ -28,19 +30,21 @@ export default async function EditCategoryPage({
         <Link className={styles.backLink} href="/admin/categories">
           &larr; Back to categories
         </Link>
-        <h1>Edit category</h1>
+        <PageHeader title="Edit category" />
       </div>
 
-      <CategoryForm
-        action={boundUpdateCategory}
-        submitLabel="Save changes"
-        defaultValues={{
-          name: category.name,
-          description: category.description,
-          color: category.color,
-          icon: category.icon,
-        }}
-      />
+      <Card>
+        <CategoryForm
+          action={boundUpdateCategory}
+          submitLabel="Save changes"
+          defaultValues={{
+            name: category.name,
+            description: category.description,
+            color: category.color,
+            icon: category.icon,
+          }}
+        />
+      </Card>
     </div>
   );
 }

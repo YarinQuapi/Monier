@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { verifySession } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
+import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { updatePurchase } from "../../actions";
 import { PurchaseForm } from "../../PurchaseForm";
 import styles from "../../page.module.css";
@@ -39,23 +41,25 @@ export default async function EditPurchasePage({
         <Link className={styles.backLink} href="/purchases">
           &larr; Back to purchases
         </Link>
-        <h1>Edit purchase</h1>
+        <PageHeader title="Edit purchase" />
       </div>
 
-      <PurchaseForm
-        action={boundUpdatePurchase}
-        submitLabel="Save changes"
-        categories={categories}
-        paymentMethods={paymentMethods}
-        defaultValues={{
-          categoryId: purchase.categoryId,
-          paymentMethodId: purchase.paymentMethodId,
-          amount: Number(purchase.amount),
-          merchant: purchase.merchant,
-          purchaseDate: toDateInputValue(purchase.purchaseDate),
-          notes: purchase.notes,
-        }}
-      />
+      <Card>
+        <PurchaseForm
+          action={boundUpdatePurchase}
+          submitLabel="Save changes"
+          categories={categories}
+          paymentMethods={paymentMethods}
+          defaultValues={{
+            categoryId: purchase.categoryId,
+            paymentMethodId: purchase.paymentMethodId,
+            amount: Number(purchase.amount),
+            merchant: purchase.merchant,
+            purchaseDate: toDateInputValue(purchase.purchaseDate),
+            notes: purchase.notes,
+          }}
+        />
+      </Card>
     </div>
   );
 }
