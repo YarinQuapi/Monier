@@ -110,10 +110,12 @@
   overflow-y: auto;
 }
 
-/* Same idea, but taller: used for the flat "by date" view, which is the
- * only content in the card (no per-category sections to scroll instead). */
+/* Same idea, but sized to fill the rest of the page: used for the flat
+ * "by date" view, which is the only content in the card (no per-category
+ * sections to scroll instead), so it should use the available viewport
+ * height rather than an arbitrary fixed cap. */
 .flatScroll {
-  max-height: 560px;
+  max-height: calc(100vh - 15rem);
   overflow-y: auto;
 }
 
