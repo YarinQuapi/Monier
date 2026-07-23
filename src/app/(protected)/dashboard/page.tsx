@@ -77,205 +77,211 @@ export default async function DashboardPage({
         description={`Welcome back, ${session.user.name ?? session.user.email}.`}
       />
 
-      <Card>
-        <div className={styles.sectionHeading}>
-          <h2>Total debt</h2>
-          <span className={styles.sectionSubtext}>as of today</span>
-        </div>
+      <div className={styles.grid}>
+        <Card className={styles.gridCard}>
+          <div className={styles.cardScroll}>
+            <div className={styles.sectionHeading}>
+              <h2>Total debt</h2>
+              <span className={styles.sectionSubtext}>as of today</span>
+            </div>
 
-        <div className={styles.statGrid}>
-          <StatCard
-            label="Total debt"
-            value={formatCurrency(debt.total)}
-            subtext={`outstanding across ${debt.lineItems.length} payment method${debt.lineItems.length === 1 ? "" : "s"}`}
-          />
-          <StatCard
-            label="Payoff ETA"
-            value={debt.payoffEta ? formatDate(debt.payoffEta) : "—"}
-            subtext={
-              debt.payoffEta ? "assuming no new charges are added" : "no outstanding debt"
-            }
-          />
-        </div>
+            <div className={styles.statGrid}>
+              <StatCard
+                label="Total debt"
+                value={formatCurrency(debt.total)}
+                subtext={`outstanding across ${debt.lineItems.length} payment method${debt.lineItems.length === 1 ? "" : "s"}`}
+              />
+              <StatCard
+                label="Payoff ETA"
+                value={debt.payoffEta ? formatDate(debt.payoffEta) : "—"}
+                subtext={
+                  debt.payoffEta ? "assuming no new charges are added" : "no outstanding debt"
+                }
+              />
+            </div>
 
-        {debt.lineItems.length > 0 && (
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Payment method</th>
-                <th>Outstanding</th>
-                <th>Owed charges</th>
-              </tr>
-            </thead>
-            <tbody>
-              {debt.lineItems.map((item) => {
-                const paymentMethod = paymentMethodsById.get(item.paymentMethodId);
-                return (
-                  <tr key={item.paymentMethodId}>
-                    <td>
-                      <div className={styles.methodCell}>
-                        <span className={styles.methodName}>
-                          {paymentMethod?.nickname ?? "Unknown payment method"}
-                        </span>
-                        <Badge tone="neutral">
-                          {formatPaymentMethodType(paymentMethod?.type)}
-                        </Badge>
-                      </div>
-                    </td>
-                    <td className={styles.amount}>{formatCurrency(item.amountDue)}</td>
-                    <td>
-                      <details className={styles.chargeDetails}>
-                        <summary className={styles.chargeSummary}>
-                          {item.charges.length} charge{item.charges.length === 1 ? "" : "s"}
-                        </summary>
-                        <ul className={styles.chargeList}>
-                          {item.charges.map((charge) => (
-                            <li
-                              key={`${charge.source}-${charge.sourceId}-${charge.chargeDate.toISOString()}`}
-                            >
-                              <Badge tone={charge.source === "SUBSCRIPTION" ? "primary" : "neutral"}>
-                                {charge.source === "SUBSCRIPTION" ? "Subscription" : "Purchase"}
-                              </Badge>{" "}
-                              {formatCurrency(charge.amount)} charged{" "}
-                              {formatDate(charge.chargeDate)} — paid off{" "}
-                              {formatDate(charge.cashOutflowDate)}
-                            </li>
-                          ))}
-                        </ul>
-                      </details>
-                    </td>
+            {debt.lineItems.length > 0 && (
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Payment method</th>
+                    <th>Outstanding</th>
+                    <th>Owed charges</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </Card>
-
-      <Card>
-        <div className={styles.monthNav}>
-          <Link
-            href={`/dashboard?month=${formatMonthParam(prevMonth)}`}
-            className={styles.navLink}
-          >
-            &larr; Prev
-          </Link>
-          <div className={styles.monthNavTitle}>
-            <h2>Cash flow</h2>
-            <span className={styles.sectionSubtext}>
-              {formatMonthLabel(referenceDate)}
-              {isCurrentMonth ? " (current)" : ""}
-            </span>
+                </thead>
+                <tbody>
+                  {debt.lineItems.map((item) => {
+                    const paymentMethod = paymentMethodsById.get(item.paymentMethodId);
+                    return (
+                      <tr key={item.paymentMethodId}>
+                        <td>
+                          <div className={styles.methodCell}>
+                            <span className={styles.methodName}>
+                              {paymentMethod?.nickname ?? "Unknown payment method"}
+                            </span>
+                            <Badge tone="neutral">
+                              {formatPaymentMethodType(paymentMethod?.type)}
+                            </Badge>
+                          </div>
+                        </td>
+                        <td className={styles.amount}>{formatCurrency(item.amountDue)}</td>
+                        <td>
+                          <details className={styles.chargeDetails}>
+                            <summary className={styles.chargeSummary}>
+                              {item.charges.length} charge{item.charges.length === 1 ? "" : "s"}
+                            </summary>
+                            <ul className={styles.chargeList}>
+                              {item.charges.map((charge) => (
+                                <li
+                                  key={`${charge.source}-${charge.sourceId}-${charge.chargeDate.toISOString()}`}
+                                >
+                                  <Badge tone={charge.source === "SUBSCRIPTION" ? "primary" : "neutral"}>
+                                    {charge.source === "SUBSCRIPTION" ? "Subscription" : "Purchase"}
+                                  </Badge>{" "}
+                                  {formatCurrency(charge.amount)} charged{" "}
+                                  {formatDate(charge.chargeDate)} — paid off{" "}
+                                  {formatDate(charge.cashOutflowDate)}
+                                </li>
+                              ))}
+                            </ul>
+                          </details>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
-          <Link
-            href={`/dashboard?month=${formatMonthParam(nextMonth)}`}
-            className={styles.navLink}
-          >
-            Next &rarr;
-          </Link>
-        </div>
+        </Card>
 
-        <div className={styles.statGrid3}>
-          <StatCard
-            label="Income"
-            value={formatCurrency(income.total)}
-            subtext={`${income.entries.length} entr${income.entries.length === 1 ? "y" : "ies"}`}
-          />
-          <StatCard
-            label="Cash needed"
-            value={formatCurrency(forecast.total)}
-            subtext={`across ${forecast.lineItems.length} payment method${forecast.lineItems.length === 1 ? "" : "s"}`}
-          />
-          <StatCard
-            label="Net"
-            value={formatCurrency(net)}
-            subtext={net >= 0 ? "projected surplus" : "projected shortfall"}
-            tone={net >= 0 ? "positive" : "negative"}
-          />
-        </div>
+        <Card className={styles.gridCard}>
+          <div className={styles.cardScroll}>
+            <div className={styles.monthNav}>
+              <Link
+                href={`/dashboard?month=${formatMonthParam(prevMonth)}`}
+                className={styles.navLink}
+              >
+                &larr; Prev
+              </Link>
+              <div className={styles.monthNavTitle}>
+                <h2>Cash flow</h2>
+                <span className={styles.sectionSubtext}>
+                  {formatMonthLabel(referenceDate)}
+                  {isCurrentMonth ? " (current)" : ""}
+                </span>
+              </div>
+              <Link
+                href={`/dashboard?month=${formatMonthParam(nextMonth)}`}
+                className={styles.navLink}
+              >
+                Next &rarr;
+              </Link>
+            </div>
 
-        {income.entries.length > 0 && (
-          <div className={styles.subsection}>
-            <h3>Income this month</h3>
-            <ul className={styles.chargeList}>
-              {income.entries.map((entry) => (
-                <li key={entry.id}>
-                  <Badge tone={entry.type === "SALARY" ? "success" : "neutral"}>
-                    {entry.type === "SALARY" ? "Salary" : "Misc"}
-                  </Badge>{" "}
-                  {entry.label} — {formatCurrency(entry.amount)} on{" "}
-                  {formatDate(entry.receivedAt)}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+            <div className={styles.statGrid3}>
+              <StatCard
+                label="Income"
+                value={formatCurrency(income.total)}
+                subtext={`${income.entries.length} entr${income.entries.length === 1 ? "y" : "ies"}`}
+              />
+              <StatCard
+                label="Cash needed"
+                value={formatCurrency(forecast.total)}
+                subtext={`across ${forecast.lineItems.length} payment method${forecast.lineItems.length === 1 ? "" : "s"}`}
+              />
+              <StatCard
+                label="Net"
+                value={formatCurrency(net)}
+                subtext={net >= 0 ? "projected surplus" : "projected shortfall"}
+                tone={net >= 0 ? "positive" : "negative"}
+              />
+            </div>
 
-        <div className={styles.subsection}>
-          <h3>Cash needed by payment method</h3>
+            {income.entries.length > 0 && (
+              <div className={styles.subsection}>
+                <h3>Income this month</h3>
+                <ul className={styles.chargeList}>
+                  {income.entries.map((entry) => (
+                    <li key={entry.id}>
+                      <Badge tone={entry.type === "SALARY" ? "success" : "neutral"}>
+                        {entry.type === "SALARY" ? "Salary" : "Misc"}
+                      </Badge>{" "}
+                      {entry.label} — {formatCurrency(entry.amount)} on{" "}
+                      {formatDate(entry.receivedAt)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-          {forecast.lineItems.length === 0 ? (
-            <EmptyState>
-              No charges are projected to hit your accounts this month.
-            </EmptyState>
-          ) : (
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Payment method</th>
-                  <th>Amount due</th>
-                  <th>Charges</th>
-                </tr>
-              </thead>
-              <tbody>
-                {forecast.lineItems.map((item) => {
-                  const paymentMethod = paymentMethodsById.get(item.paymentMethodId);
-                  return (
-                    <tr key={item.paymentMethodId}>
-                      <td>
-                        <div className={styles.methodCell}>
-                          <span className={styles.methodName}>
-                            {paymentMethod?.nickname ?? "Unknown payment method"}
-                          </span>
-                          <Badge tone="neutral">
-                            {formatPaymentMethodType(paymentMethod?.type)}
-                          </Badge>
-                        </div>
-                      </td>
-                      <td className={styles.amount}>
-                        {formatCurrency(item.amountDue)}
-                      </td>
-                      <td>
-                        <details className={styles.chargeDetails}>
-                          <summary className={styles.chargeSummary}>
-                            {item.charges.length} charge{item.charges.length === 1 ? "" : "s"}
-                          </summary>
-                          <ul className={styles.chargeList}>
-                            {item.charges.map((charge) => (
-                              <li
-                                key={`${charge.source}-${charge.sourceId}-${charge.chargeDate.toISOString()}`}
-                              >
-                                <Badge tone={charge.source === "SUBSCRIPTION" ? "primary" : "neutral"}>
-                                  {charge.source === "SUBSCRIPTION" ? "Subscription" : "Purchase"}
-                                </Badge>{" "}
-                                {formatCurrency(charge.amount)} charged{" "}
-                                {formatDate(charge.chargeDate)}
-                                {paymentMethod?.type === "CREDIT_CARD"
-                                  ? ` — due ${formatDate(charge.cashOutflowDate)}`
-                                  : ""}
-                              </li>
-                            ))}
-                          </ul>
-                        </details>
-                      </td>
+            <div className={styles.subsection}>
+              <h3>Cash needed by payment method</h3>
+
+              {forecast.lineItems.length === 0 ? (
+                <EmptyState>
+                  No charges are projected to hit your accounts this month.
+                </EmptyState>
+              ) : (
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Payment method</th>
+                      <th>Amount due</th>
+                      <th>Charges</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </Card>
+                  </thead>
+                  <tbody>
+                    {forecast.lineItems.map((item) => {
+                      const paymentMethod = paymentMethodsById.get(item.paymentMethodId);
+                      return (
+                        <tr key={item.paymentMethodId}>
+                          <td>
+                            <div className={styles.methodCell}>
+                              <span className={styles.methodName}>
+                                {paymentMethod?.nickname ?? "Unknown payment method"}
+                              </span>
+                              <Badge tone="neutral">
+                                {formatPaymentMethodType(paymentMethod?.type)}
+                              </Badge>
+                            </div>
+                          </td>
+                          <td className={styles.amount}>
+                            {formatCurrency(item.amountDue)}
+                          </td>
+                          <td>
+                            <details className={styles.chargeDetails}>
+                              <summary className={styles.chargeSummary}>
+                                {item.charges.length} charge{item.charges.length === 1 ? "" : "s"}
+                              </summary>
+                              <ul className={styles.chargeList}>
+                                {item.charges.map((charge) => (
+                                  <li
+                                    key={`${charge.source}-${charge.sourceId}-${charge.chargeDate.toISOString()}`}
+                                  >
+                                    <Badge tone={charge.source === "SUBSCRIPTION" ? "primary" : "neutral"}>
+                                      {charge.source === "SUBSCRIPTION" ? "Subscription" : "Purchase"}
+                                    </Badge>{" "}
+                                    {formatCurrency(charge.amount)} charged{" "}
+                                    {formatDate(charge.chargeDate)}
+                                    {paymentMethod?.type === "CREDIT_CARD"
+                                      ? ` — due ${formatDate(charge.cashOutflowDate)}`
+                                      : ""}
+                                  </li>
+                                ))}
+                              </ul>
+                            </details>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }
