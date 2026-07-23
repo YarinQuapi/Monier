@@ -125,8 +125,37 @@
   font-family: var(--font-mono);
 }
 
+.chargeDetails {
+  font-size: 0.85rem;
+}
+
+.chargeSummary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-primary);
+  list-style: none;
+  width: fit-content;
+}
+
+.chargeSummary::-webkit-details-marker {
+  display: none;
+}
+
+.chargeSummary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 0.35rem;
+  transition: transform 0.15s ease;
+}
+
+.chargeDetails[open] .chargeSummary::before {
+  transform: rotate(90deg);
+}
+
+/* Cap the expanded list's height so a payment method with many charges
+ * scrolls internally instead of stretching the whole page. */
 .chargeList {
-  margin: 0;
+  margin: 0.5rem 0 0;
   padding: 0;
   list-style: none;
   display: flex;
@@ -134,4 +163,6 @@
   gap: 0.4rem;
   font-size: 0.85rem;
   color: var(--color-text-muted);
+  max-height: 220px;
+  overflow-y: auto;
 }

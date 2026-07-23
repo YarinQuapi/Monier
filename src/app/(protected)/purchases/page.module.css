@@ -9,6 +9,50 @@
   margin-bottom: 1.1rem;
 }
 
+.categoryGroupList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.categoryGroup {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.categoryGroupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.9rem;
+  background: var(--color-surface-muted);
+  border-bottom: 1px solid var(--color-border);
+  font-weight: 600;
+}
+
+.categoryGroupMeta {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* Cap each category's list at a fixed height so a category with many
+ * purchases scrolls internally instead of stretching the whole page. */
+.categoryScroll {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.categoryScroll .table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--color-surface);
+  z-index: 1;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;

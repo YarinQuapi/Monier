@@ -30,6 +30,27 @@ export default async function PurchasesPage() {
     }),
   ]);
 
+  const categoryGroups = new Map<
+    string,
+    { category: (typeof purchases)[number]["category"]; items: typeof purchases }
+  >();
+
+  for (const purchase of purchases) {
+    const existing = categoryGroups.get(purchase.categoryId);
+    if (existing) {
+      existing.items.push(purchase);
+    } else {
+      categoryGroups.set(purchase.categoryId, {
+        category: purchase.category,
+        items: [purchase],
+      });
+    }
+  }
+
+  const sortedGroups = Array.from(categoryGroups.values()).sort((a, b) =>
+    a.category.name.localeCompare(b.category.name)
+  );
+
   return (
     <div className={styles.wrapper}>
       <PageHeader
@@ -43,55 +64,76 @@ export default async function PurchasesPage() {
         {purchases.length === 0 ? (
           <EmptyState>No purchases yet — add one below.</EmptyState>
         ) : (
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Category</th>
-                <th>Merchant</th>
-                <th>Amount</th>
-                <th>Payment method</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {purchases.map((purchase) => (
-                <tr key={purchase.id}>
-                  <td>{formatDate(purchase.purchaseDate)}</td>
-                  <td>
+          <div className={styles.categoryGroupList}>
+            {sortedGroups.map(({ category, items }) => {
+              const total = items.reduce((sum, item) => sum + Number(item.amount), 0);
+              return (
+                <div key={category.id} className={styles.categoryGroup}>
+                  <div className={styles.categoryGroupHeader}>
                     <span className={styles.categoryCell}>
-                      {purchase.category.color && (
+                      {category.color && (
                         <span
                           className={styles.swatch}
-                          style={{ backgroundColor: purchase.category.color }}
+                          style={{ backgroundColor: category.color }}
                         />
                       )}
-                      {purchase.category.name}
+                      {category.name}
                     </span>
-                  </td>
-                  <td>{purchase.merchant ?? "—"}</td>
-                  <td className={styles.amount}>{formatCurrency(purchase.amount.toString())}</td>
-                  <td>{purchase.paymentMethod?.nickname ?? "Cash / none"}</td>
-                  <td>
-                    <div className={styles.rowActions}>
-                      <Link
-                        className={styles.editLink}
-                        href={`/purchases/${purchase.id}/edit`}
-                      >
-                        Edit
-                      </Link>
-                      <form action={deletePurchase}>
-                        <input type="hidden" name="purchaseId" value={purchase.id} />
-                        <Button variant="danger" type="submit">
-                          Delete
-                        </Button>
-                      </form>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    <span className={styles.categoryGroupMeta}>
+                      {items.length} purchase{items.length === 1 ? "" : "s"} ·{" "}
+                      {formatCurrency(total)}
+                    </span>
+                  </div>
+
+                  <div className={styles.categoryScroll}>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Merchant</th>
+                          <th>Amount</th>
+                          <th>Payment method</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {items.map((purchase) => (
+                          <tr key={purchase.id}>
+                            <td>{formatDate(purchase.purchaseDate)}</td>
+                            <td>{purchase.merchant ?? "—"}</td>
+                            <td className={styles.amount}>
+                              {formatCurrency(purchase.amount.toString())}
+                            </td>
+                            <td>{purchase.paymentMethod?.nickname ?? "Cash / none"}</td>
+                            <td>
+                              <div className={styles.rowActions}>
+                                <Link
+                                  className={styles.editLink}
+                                  href={`/purchases/${purchase.id}/edit`}
+                                >
+                                  Edit
+                                </Link>
+                                <form action={deletePurchase}>
+                                  <input
+                                    type="hidden"
+                                    name="purchaseId"
+                                    value={purchase.id}
+                                  />
+                                  <Button variant="danger" type="submit">
+                                    Delete
+                                  </Button>
+                                </form>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </Card>
 

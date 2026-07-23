@@ -124,20 +124,25 @@ export default async function DashboardPage({
                     </td>
                     <td className={styles.amount}>{formatCurrency(item.amountDue)}</td>
                     <td>
-                      <ul className={styles.chargeList}>
-                        {item.charges.map((charge) => (
-                          <li
-                            key={`${charge.source}-${charge.sourceId}-${charge.chargeDate.toISOString()}`}
-                          >
-                            <Badge tone={charge.source === "SUBSCRIPTION" ? "primary" : "neutral"}>
-                              {charge.source === "SUBSCRIPTION" ? "Subscription" : "Purchase"}
-                            </Badge>{" "}
-                            {formatCurrency(charge.amount)} charged{" "}
-                            {formatDate(charge.chargeDate)} — paid off{" "}
-                            {formatDate(charge.cashOutflowDate)}
-                          </li>
-                        ))}
-                      </ul>
+                      <details className={styles.chargeDetails}>
+                        <summary className={styles.chargeSummary}>
+                          {item.charges.length} charge{item.charges.length === 1 ? "" : "s"}
+                        </summary>
+                        <ul className={styles.chargeList}>
+                          {item.charges.map((charge) => (
+                            <li
+                              key={`${charge.source}-${charge.sourceId}-${charge.chargeDate.toISOString()}`}
+                            >
+                              <Badge tone={charge.source === "SUBSCRIPTION" ? "primary" : "neutral"}>
+                                {charge.source === "SUBSCRIPTION" ? "Subscription" : "Purchase"}
+                              </Badge>{" "}
+                              {formatCurrency(charge.amount)} charged{" "}
+                              {formatDate(charge.chargeDate)} — paid off{" "}
+                              {formatDate(charge.cashOutflowDate)}
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
                     </td>
                   </tr>
                 );
@@ -241,22 +246,27 @@ export default async function DashboardPage({
                         {formatCurrency(item.amountDue)}
                       </td>
                       <td>
-                        <ul className={styles.chargeList}>
-                          {item.charges.map((charge) => (
-                            <li
-                              key={`${charge.source}-${charge.sourceId}-${charge.chargeDate.toISOString()}`}
-                            >
-                              <Badge tone={charge.source === "SUBSCRIPTION" ? "primary" : "neutral"}>
-                                {charge.source === "SUBSCRIPTION" ? "Subscription" : "Purchase"}
-                              </Badge>{" "}
-                              {formatCurrency(charge.amount)} charged{" "}
-                              {formatDate(charge.chargeDate)}
-                              {paymentMethod?.type === "CREDIT_CARD"
-                                ? ` — due ${formatDate(charge.cashOutflowDate)}`
-                                : ""}
-                            </li>
-                          ))}
-                        </ul>
+                        <details className={styles.chargeDetails}>
+                          <summary className={styles.chargeSummary}>
+                            {item.charges.length} charge{item.charges.length === 1 ? "" : "s"}
+                          </summary>
+                          <ul className={styles.chargeList}>
+                            {item.charges.map((charge) => (
+                              <li
+                                key={`${charge.source}-${charge.sourceId}-${charge.chargeDate.toISOString()}`}
+                              >
+                                <Badge tone={charge.source === "SUBSCRIPTION" ? "primary" : "neutral"}>
+                                  {charge.source === "SUBSCRIPTION" ? "Subscription" : "Purchase"}
+                                </Badge>{" "}
+                                {formatCurrency(charge.amount)} charged{" "}
+                                {formatDate(charge.chargeDate)}
+                                {paymentMethod?.type === "CREDIT_CARD"
+                                  ? ` — due ${formatDate(charge.cashOutflowDate)}`
+                                  : ""}
+                              </li>
+                            ))}
+                          </ul>
+                        </details>
                       </td>
                     </tr>
                   );
