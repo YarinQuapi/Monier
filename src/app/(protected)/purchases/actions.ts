@@ -79,8 +79,11 @@ export async function createPurchase(
     },
   });
 
+  // No redirect here (unlike updatePurchase): this action is submitted from
+  // the "Add purchase" modal on the purchases page itself, so we just
+  // revalidate in place and let the modal close itself on success.
   revalidatePath("/purchases");
-  redirect("/purchases");
+  return undefined;
 }
 
 export async function updatePurchase(

@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { createPurchase, deletePurchase } from "./actions";
-import { PurchaseForm } from "./PurchaseForm";
+import { AddPurchaseModal } from "./AddPurchaseModal";
 import styles from "./page.module.css";
 
 function formatDate(date: Date) {
@@ -47,29 +47,42 @@ export default async function PurchasesPage() {
     }
   }
 
-  const sortedGroups = Array.from(categoryGroups.values()).sort((a, b) =>
-    a.category.name.localeCompare(b.category.name)
-  );
+  const sortedGroups = Array.from(categoryGroups.values())
+    .map((group) => ({
+      category: group.category,
+      items: [...group.items].sort(
+        (a, b) => b.purchaseDate.getTime() - a.purchaseDate.getTime()
+      ),
+    }))
+    .sort((a, b) => a.category.name.localeCompare(b.category.name));
 
   return (
     <div className={styles.wrapper}>
       <PageHeader
         title="Purchases"
         description="One-off expenses, tagged against the admin-managed category taxonomy and optionally linked to a payment method."
+        actions={
+          <AddPurchaseModal
+            action={createPurchase}
+            categories={categories}
+            paymentMethods={paymentMethods}
+            isAdmin={session.user.role === "ADMIN"}
+          />
+        }
       />
 
       <Card>
         <h2 className={styles.sectionTitle}>Your purchases ({purchases.length})</h2>
 
         {purchases.length === 0 ? (
-          <EmptyState>No purchases yet — add one below.</EmptyState>
+          <EmptyState>No purchases yet — add one to get started.</EmptyState>
         ) : (
           <div className={styles.categoryGroupList}>
             {sortedGroups.map(({ category, items }) => {
               const total = items.reduce((sum, item) => sum + Number(item.amount), 0);
               return (
-                <div key={category.id} className={styles.categoryGroup}>
-                  <div className={styles.categoryGroupHeader}>
+                <details key={category.id} className={styles.categoryGroup} open>
+                  <summary className={styles.categoryGroupHeader}>
                     <span className={styles.categoryCell}>
                       {category.color && (
                         <span
@@ -83,7 +96,7 @@ export default async function PurchasesPage() {
                       {items.length} purchase{items.length === 1 ? "" : "s"} ·{" "}
                       {formatCurrency(total)}
                     </span>
-                  </div>
+                  </summary>
 
                   <div className={styles.categoryScroll}>
                     <table className={styles.table}>
@@ -130,35 +143,10 @@ export default async function PurchasesPage() {
                       </tbody>
                     </table>
                   </div>
-                </div>
+                </details>
               );
             })}
           </div>
-        )}
-      </Card>
-
-      <Card>
-        <h2 className={styles.sectionTitle}>Add a purchase</h2>
-
-        {categories.length === 0 ? (
-          <EmptyState>
-            No categories exist yet.{" "}
-            {session.user.role === "ADMIN" ? (
-              <>
-                Create one in the <Link href="/admin/categories">Admin panel</Link>{" "}
-                first.
-              </>
-            ) : (
-              "Ask an admin to add some before logging a purchase."
-            )}
-          </EmptyState>
-        ) : (
-          <PurchaseForm
-            action={createPurchase}
-            submitLabel="Add purchase"
-            categories={categories}
-            paymentMethods={paymentMethods}
-          />
         )}
       </Card>
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 import type { PurchaseFormState } from "./actions";
 import styles from "./page.module.css";
@@ -32,6 +32,8 @@ interface PurchaseFormProps {
     purchaseDate?: string; // yyyy-mm-dd
     notes?: string | null;
   };
+  /** Called once a submission completes without a validation error (e.g. so a modal can close itself). */
+  onSuccess?: () => void;
 }
 
 export function PurchaseForm({
@@ -40,8 +42,17 @@ export function PurchaseForm({
   categories,
   paymentMethods,
   defaultValues,
+  onSuccess,
 }: PurchaseFormProps) {
   const [state, formAction, pending] = useActionState(action, undefined);
+  const wasPendingRef = useRef(false);
+
+  useEffect(() => {
+    if (wasPendingRef.current && !pending && !state?.error) {
+      onSuccess?.();
+    }
+    wasPendingRef.current = pending;
+  }, [pending, state, onSuccess]);
 
   return (
     <form action={formAction} className={styles.form}>
