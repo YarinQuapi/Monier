@@ -6,7 +6,42 @@
 
 .sectionTitle {
   font-size: 1.05rem;
+}
+
+.sectionTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
   margin-bottom: 1.1rem;
+}
+
+.sortToggle {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.sortToggleLink {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.sortToggleLink:hover {
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+}
+
+.sortToggleLinkActive,
+.sortToggleLinkActive:hover {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-text);
+  border-color: transparent;
 }
 
 .categoryGroupList {
@@ -75,7 +110,15 @@
   overflow-y: auto;
 }
 
-.categoryScroll .table thead th {
+/* Same idea, but taller: used for the flat "by date" view, which is the
+ * only content in the card (no per-category sections to scroll instead). */
+.flatScroll {
+  max-height: 560px;
+  overflow-y: auto;
+}
+
+.categoryScroll .table thead th,
+.flatScroll .table thead th {
   position: sticky;
   top: 0;
   background: var(--color-surface);
