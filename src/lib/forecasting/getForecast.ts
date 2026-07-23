@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import {
+  computeCumulativeExpenses,
   computeDebtSummary,
   computeEomForecast,
   endOfUTCMonth,
@@ -140,22 +141,52 @@ export async function getIncomeSummaryForUser(
 }
 
 /**
+ * Sums all income a user has ever received, up through the end of the
+ * calendar month containing `referenceDate` — the income-side half of the
+ * running cumulative balance (see `computeCumulativeExpenses`).
+ */
+export async function getCumulativeIncomeForUser(
+  userId: string,
+  referenceDate: Date
+): Promise<number> {
+  const monthEnd = endOfUTCMonth(referenceDate);
+  const result = await prisma.income.aggregate({
+    where: { userId, receivedAt: { lte: monthEnd } },
+    _sum: { amount: true },
+  });
+  return roundCurrency(Number(result._sum.amount ?? 0));
+}
+
+/**
  * Combines the EOM expense forecast with the month's logged income into a
- * single net cash-flow picture: `net = income.total - forecast.total`.
+ * single net cash-flow picture: `net = income.total - forecast.total` for
+ * the month alone, plus `cumulativeNet`, the running balance carried
+ * forward from every prior month.
  */
 export async function getCashFlowSummaryForUser(
   userId: string,
   referenceDate: Date
 ): Promise<CashFlowSummary> {
-  const [forecast, income] = await Promise.all([
-    getEomForecastForUser(userId, referenceDate),
-    getIncomeSummaryForUser(userId, referenceDate),
-  ]);
+  const [forecast, income, cumulativeIncome, { paymentMethodInputs, purchaseInputs, subscriptionInputs }] =
+    await Promise.all([
+      getEomForecastForUser(userId, referenceDate),
+      getIncomeSummaryForUser(userId, referenceDate),
+      getCumulativeIncomeForUser(userId, referenceDate),
+      loadForecastInputsForUser(userId),
+    ]);
+
+  const cumulativeExpenses = computeCumulativeExpenses(
+    paymentMethodInputs,
+    purchaseInputs,
+    subscriptionInputs,
+    referenceDate
+  );
 
   return {
     income,
     forecast,
     net: roundCurrency(income.total - forecast.total),
+    cumulativeNet: roundCurrency(cumulativeIncome - cumulativeExpenses),
   };
 }
 
@@ -175,10 +206,11 @@ export async function getDashboardSummaryForUser(
   userId: string,
   referenceDate: Date
 ): Promise<DashboardSummary> {
-  const [{ paymentMethodInputs, purchaseInputs, subscriptionInputs }, income] =
+  const [{ paymentMethodInputs, purchaseInputs, subscriptionInputs }, income, cumulativeIncome] =
     await Promise.all([
       loadForecastInputsForUser(userId),
       getIncomeSummaryForUser(userId, referenceDate),
+      getCumulativeIncomeForUser(userId, referenceDate),
     ]);
 
   const forecast = computeEomForecast(
@@ -188,9 +220,20 @@ export async function getDashboardSummaryForUser(
     referenceDate
   );
   const debt = computeDebtSummary(paymentMethodInputs, purchaseInputs, subscriptionInputs);
+  const cumulativeExpenses = computeCumulativeExpenses(
+    paymentMethodInputs,
+    purchaseInputs,
+    subscriptionInputs,
+    referenceDate
+  );
 
   return {
-    cashFlow: { income, forecast, net: roundCurrency(income.total - forecast.total) },
+    cashFlow: {
+      income,
+      forecast,
+      net: roundCurrency(income.total - forecast.total),
+      cumulativeNet: roundCurrency(cumulativeIncome - cumulativeExpenses),
+    },
     debt,
   };
 }

@@ -314,6 +314,64 @@ export function computeEomForecast(
   return { referenceMonthStart: monthStart, referenceMonthEnd: monthEnd, total, lineItems };
 }
 
+/**
+ * Sums every charge (purchase or subscription occurrence) whose cash
+ * outflow date falls on or before the end of the calendar month containing
+ * `referenceDate` — with no lower bound, unlike `computeEomForecast`'s
+ * lookback window. This is the "total cash that has left (or will have
+ * left) the accounts, all-time through this month" figure needed to carry
+ * a running balance forward from one month to the next, instead of each
+ * month's net resetting to zero.
+ */
+export function computeCumulativeExpenses(
+  paymentMethods: PaymentMethodInput[],
+  purchases: PurchaseInput[],
+  subscriptions: SubscriptionInput[],
+  referenceDate: Date
+): number {
+  const monthEnd = endOfUTCMonth(referenceDate);
+  const paymentMethodsById = new Map(paymentMethods.map((pm) => [pm.id, pm]));
+  let total = 0;
+
+  for (const purchase of purchases) {
+    if (!purchase.paymentMethodId || purchase.purchaseDate > monthEnd) {
+      continue;
+    }
+    const paymentMethod = paymentMethodsById.get(purchase.paymentMethodId);
+    if (!paymentMethod) {
+      continue;
+    }
+    const cashOutflowDate = resolveCashOutflowDate(paymentMethod, purchase.purchaseDate);
+    if (cashOutflowDate > monthEnd) {
+      continue;
+    }
+    total += purchase.amount;
+  }
+
+  for (const subscription of subscriptions) {
+    const paymentMethod = paymentMethodsById.get(subscription.paymentMethodId);
+    if (!paymentMethod) {
+      continue;
+    }
+
+    const occurrenceDates = expandSubscriptionOccurrences(
+      subscription,
+      subscription.startDate,
+      monthEnd
+    );
+
+    for (const occurrenceDate of occurrenceDates) {
+      const cashOutflowDate = resolveCashOutflowDate(paymentMethod, occurrenceDate);
+      if (cashOutflowDate > monthEnd) {
+        continue;
+      }
+      total += subscription.amount;
+    }
+  }
+
+  return roundCurrency(total);
+}
+
 // ---------------------------------------------------------------------------
 // Total debt + payoff ETA
 // ---------------------------------------------------------------------------

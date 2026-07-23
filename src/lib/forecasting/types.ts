@@ -107,8 +107,14 @@ export interface IncomeSummary {
 export interface CashFlowSummary {
   income: IncomeSummary;
   forecast: EomForecastResult;
-  /** income.total - forecast.total; positive means projected surplus. */
+  /** income.total - forecast.total for *this month alone*; positive means
+   * a projected surplus for the month in isolation. */
   net: number;
+  /** All-time income received through the end of this month, minus all-time
+   * cash that has (or will have) left the accounts through the end of this
+   * month. Unlike `net`, this carries every prior month's surplus/deficit
+   * forward instead of resetting to zero each month. */
+  cumulativeNet: number;
 }
 
 export interface DebtSummary {
