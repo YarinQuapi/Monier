@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { verifySession } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
+import { formatCurrency } from "@/lib/currency";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -55,7 +56,7 @@ export default async function IncomePage() {
                     </Badge>
                   </td>
                   <td>{income.label}</td>
-                  <td className={styles.amount}>${income.amount.toString()}</td>
+                  <td className={styles.amount}>{formatCurrency(income.amount.toString())}</td>
                   <td>
                     <div className={styles.rowActions}>
                       <Link

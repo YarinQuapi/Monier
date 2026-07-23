@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { verifySession } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
+import { formatCurrency } from "@/lib/currency";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -78,7 +79,7 @@ export default async function SubscriptionsPage({
                     <br />
                     <small className={styles.muted}>{sub.accountLabel}</small>
                   </td>
-                  <td className={styles.amount}>${sub.amount.toString()}</td>
+                  <td className={styles.amount}>{formatCurrency(sub.amount.toString())}</td>
                   <td>{sub.paymentMethod.nickname}</td>
                   <td>
                     <Badge tone={sub.billingType === "FIXED_TERM" ? "warning" : "primary"}>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { verifySession } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
+import { formatCurrency } from "@/lib/currency";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -69,7 +70,7 @@ export default async function PurchasesPage() {
                     </span>
                   </td>
                   <td>{purchase.merchant ?? "—"}</td>
-                  <td className={styles.amount}>${purchase.amount.toString()}</td>
+                  <td className={styles.amount}>{formatCurrency(purchase.amount.toString())}</td>
                   <td>{purchase.paymentMethod?.nickname ?? "Cash / none"}</td>
                   <td>
                     <div className={styles.rowActions}>

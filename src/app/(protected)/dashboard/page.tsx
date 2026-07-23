@@ -2,6 +2,7 @@ import Link from "next/link";
 import { verifySession } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { getDashboardSummaryForUser } from "@/lib/forecasting/getForecast";
+import { formatCurrency } from "@/lib/currency";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -32,10 +33,6 @@ function formatMonthLabel(date: Date): string {
 
 function formatDate(date: Date): string {
   return date.toISOString().slice(0, 10);
-}
-
-function formatCurrency(amount: number): string {
-  return `$${amount.toFixed(2)}`;
 }
 
 function formatPaymentMethodType(type: "CREDIT_CARD" | "DEBIT_CARD" | "BANK_ACCOUNT" | undefined): string {
