@@ -101,56 +101,48 @@ export default async function DashboardPage({
             </div>
 
             {debt.lineItems.length > 0 && (
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Payment method</th>
-                    <th>Outstanding</th>
-                    <th>Owed charges</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {debt.lineItems.map((item) => {
-                    const paymentMethod = paymentMethodsById.get(item.paymentMethodId);
-                    return (
-                      <tr key={item.paymentMethodId}>
-                        <td>
-                          <div className={styles.methodCell}>
-                            <span className={styles.methodName}>
-                              {paymentMethod?.nickname ?? "Unknown payment method"}
-                            </span>
-                            <Badge tone="neutral">
-                              {formatPaymentMethodType(paymentMethod?.type)}
-                            </Badge>
-                          </div>
-                        </td>
-                        <td className={styles.amount}>{formatCurrency(item.amountDue)}</td>
-                        <td>
-                          <details className={styles.chargeDetails}>
-                            <summary className={styles.chargeSummary}>
-                              {item.charges.length} charge{item.charges.length === 1 ? "" : "s"}
-                            </summary>
-                            <ul className={styles.chargeList}>
-                              {item.charges.map((charge) => (
-                                <li
-                                  key={`${charge.source}-${charge.sourceId}-${charge.chargeDate.toISOString()}`}
-                                >
-                                  <Badge tone={charge.source === "SUBSCRIPTION" ? "primary" : "neutral"}>
-                                    {charge.source === "SUBSCRIPTION" ? "Subscription" : "Purchase"}
-                                  </Badge>{" "}
-                                  {formatCurrency(charge.amount)} charged{" "}
-                                  {formatDate(charge.chargeDate)} — paid off{" "}
-                                  {formatDate(charge.cashOutflowDate)}
-                                </li>
-                              ))}
-                            </ul>
-                          </details>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div className={styles.lineList}>
+                <div className={styles.lineListHeader}>
+                  <span>Payment method</span>
+                  <span>Outstanding</span>
+                  <span>Owed charges</span>
+                </div>
+                {debt.lineItems.map((item) => {
+                  const paymentMethod = paymentMethodsById.get(item.paymentMethodId);
+                  return (
+                    <details key={item.paymentMethodId} className={styles.lineItem}>
+                      <summary className={styles.lineItemSummary}>
+                        <span className={styles.methodCell}>
+                          <span className={styles.methodName}>
+                            {paymentMethod?.nickname ?? "Unknown payment method"}
+                          </span>
+                          <Badge tone="neutral">
+                            {formatPaymentMethodType(paymentMethod?.type)}
+                          </Badge>
+                        </span>
+                        <span className={styles.amount}>{formatCurrency(item.amountDue)}</span>
+                        <span className={styles.chargeToggle}>
+                          {item.charges.length} charge{item.charges.length === 1 ? "" : "s"}
+                        </span>
+                      </summary>
+                      <ul className={styles.chargeList}>
+                        {item.charges.map((charge) => (
+                          <li
+                            key={`${charge.source}-${charge.sourceId}-${charge.chargeDate.toISOString()}`}
+                          >
+                            <Badge tone={charge.source === "SUBSCRIPTION" ? "primary" : "neutral"}>
+                              {charge.source === "SUBSCRIPTION" ? "Subscription" : "Purchase"}
+                            </Badge>{" "}
+                            {formatCurrency(charge.amount)} charged{" "}
+                            {formatDate(charge.chargeDate)} — paid off{" "}
+                            {formatDate(charge.cashOutflowDate)}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  );
+                })}
+              </div>
             )}
           </div>
         </Card>
@@ -223,60 +215,52 @@ export default async function DashboardPage({
                   No charges are projected to hit your accounts this month.
                 </EmptyState>
               ) : (
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th>Payment method</th>
-                      <th>Amount due</th>
-                      <th>Charges</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {forecast.lineItems.map((item) => {
-                      const paymentMethod = paymentMethodsById.get(item.paymentMethodId);
-                      return (
-                        <tr key={item.paymentMethodId}>
-                          <td>
-                            <div className={styles.methodCell}>
-                              <span className={styles.methodName}>
-                                {paymentMethod?.nickname ?? "Unknown payment method"}
-                              </span>
-                              <Badge tone="neutral">
-                                {formatPaymentMethodType(paymentMethod?.type)}
-                              </Badge>
-                            </div>
-                          </td>
-                          <td className={styles.amount}>
+                <div className={styles.lineList}>
+                  <div className={styles.lineListHeader}>
+                    <span>Payment method</span>
+                    <span>Amount due</span>
+                    <span>Charges</span>
+                  </div>
+                  {forecast.lineItems.map((item) => {
+                    const paymentMethod = paymentMethodsById.get(item.paymentMethodId);
+                    return (
+                      <details key={item.paymentMethodId} className={styles.lineItem}>
+                        <summary className={styles.lineItemSummary}>
+                          <span className={styles.methodCell}>
+                            <span className={styles.methodName}>
+                              {paymentMethod?.nickname ?? "Unknown payment method"}
+                            </span>
+                            <Badge tone="neutral">
+                              {formatPaymentMethodType(paymentMethod?.type)}
+                            </Badge>
+                          </span>
+                          <span className={styles.amount}>
                             {formatCurrency(item.amountDue)}
-                          </td>
-                          <td>
-                            <details className={styles.chargeDetails}>
-                              <summary className={styles.chargeSummary}>
-                                {item.charges.length} charge{item.charges.length === 1 ? "" : "s"}
-                              </summary>
-                              <ul className={styles.chargeList}>
-                                {item.charges.map((charge) => (
-                                  <li
-                                    key={`${charge.source}-${charge.sourceId}-${charge.chargeDate.toISOString()}`}
-                                  >
-                                    <Badge tone={charge.source === "SUBSCRIPTION" ? "primary" : "neutral"}>
-                                      {charge.source === "SUBSCRIPTION" ? "Subscription" : "Purchase"}
-                                    </Badge>{" "}
-                                    {formatCurrency(charge.amount)} charged{" "}
-                                    {formatDate(charge.chargeDate)}
-                                    {paymentMethod?.type === "CREDIT_CARD"
-                                      ? ` — due ${formatDate(charge.cashOutflowDate)}`
-                                      : ""}
-                                  </li>
-                                ))}
-                              </ul>
-                            </details>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                          </span>
+                          <span className={styles.chargeToggle}>
+                            {item.charges.length} charge{item.charges.length === 1 ? "" : "s"}
+                          </span>
+                        </summary>
+                        <ul className={styles.chargeList}>
+                          {item.charges.map((charge) => (
+                            <li
+                              key={`${charge.source}-${charge.sourceId}-${charge.chargeDate.toISOString()}`}
+                            >
+                              <Badge tone={charge.source === "SUBSCRIPTION" ? "primary" : "neutral"}>
+                                {charge.source === "SUBSCRIPTION" ? "Subscription" : "Purchase"}
+                              </Badge>{" "}
+                              {formatCurrency(charge.amount)} charged{" "}
+                              {formatDate(charge.chargeDate)}
+                              {paymentMethod?.type === "CREDIT_CARD"
+                                ? ` — due ${formatDate(charge.cashOutflowDate)}`
+                                : ""}
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </div>
