@@ -105,3 +105,16 @@ export interface CashFlowSummary {
   /** income.total - forecast.total; positive means projected surplus. */
   net: number;
 }
+
+export interface DebtSummary {
+  /** "Now" the debt was computed as of. */
+  asOf: Date;
+  /** Total outstanding debt: unpaid already-incurred charges, plus every
+   * remaining installment of active FIXED_TERM subscriptions. */
+  total: number;
+  /** Latest cash-outflow date among all outstanding debt — the date
+   * everything currently owed would be fully paid off, assuming no new
+   * charges are added. Null when there's no outstanding debt. */
+  payoffEta: Date | null;
+  lineItems: EomForecastLineItem[];
+}

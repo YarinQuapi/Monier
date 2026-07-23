@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { verifySession } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
-import { getCashFlowSummaryForUser } from "@/lib/forecasting/getForecast";
+import { getDashboardSummaryForUser } from "@/lib/forecasting/getForecast";
 import styles from "./page.module.css";
 
 function parseMonthParam(month: string | undefined): Date {
@@ -42,10 +42,11 @@ export default async function DashboardPage({
   const { month } = await searchParams;
   const referenceDate = parseMonthParam(month);
 
-  const [cashFlow, paymentMethods] = await Promise.all([
-    getCashFlowSummaryForUser(session.user.id, referenceDate),
+  const [summary, paymentMethods] = await Promise.all([
+    getDashboardSummaryForUser(session.user.id, referenceDate),
     prisma.paymentMethod.findMany({ where: { userId: session.user.id } }),
   ]);
+  const { cashFlow, debt } = summary;
   const { forecast, income, net } = cashFlow;
 
   const paymentMethodsById = new Map(paymentMethods.map((pm) => [pm.id, pm]));
@@ -67,6 +68,81 @@ export default async function DashboardPage({
         <h1>Dashboard</h1>
         <p>Welcome, {session.user.email}.</p>
       </div>
+
+      <section className={styles.section}>
+        <h2>Total debt</h2>
+
+        <section className={styles.statGrid}>
+          <div className={styles.statCard}>
+            <span className={styles.statLabel}>Total debt</span>
+            <span className={styles.statValue}>{formatCurrency(debt.total)}</span>
+            <span className={styles.statSubtext}>
+              outstanding across {debt.lineItems.length} payment method
+              {debt.lineItems.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statLabel}>Payoff ETA</span>
+            <span className={styles.statValue}>
+              {debt.payoffEta ? formatDate(debt.payoffEta) : "—"}
+            </span>
+            <span className={styles.statSubtext}>
+              {debt.payoffEta
+                ? "assuming no new charges are added"
+                : "no outstanding debt"}
+            </span>
+          </div>
+        </section>
+
+        {debt.lineItems.length > 0 && (
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Payment method</th>
+                <th>Outstanding</th>
+                <th>Owed charges</th>
+              </tr>
+            </thead>
+            <tbody>
+              {debt.lineItems.map((item) => {
+                const paymentMethod = paymentMethodsById.get(item.paymentMethodId);
+                return (
+                  <tr key={item.paymentMethodId}>
+                    <td>
+                      {paymentMethod?.nickname ?? "Unknown payment method"}
+                      <br />
+                      <small className={styles.muted}>
+                        {paymentMethod?.type === "CREDIT_CARD"
+                          ? "Credit card"
+                          : "Bank account"}
+                      </small>
+                    </td>
+                    <td className={styles.amount}>{formatCurrency(item.amountDue)}</td>
+                    <td>
+                      <ul className={styles.chargeList}>
+                        {item.charges.map((charge) => (
+                          <li
+                            key={`${charge.source}-${charge.sourceId}-${charge.chargeDate.toISOString()}`}
+                          >
+                            <span className={styles.chargeBadge}>
+                              {charge.source === "SUBSCRIPTION"
+                                ? "Subscription"
+                                : "Purchase"}
+                            </span>{" "}
+                            {formatCurrency(charge.amount)} charged{" "}
+                            {formatDate(charge.chargeDate)} — paid off{" "}
+                            {formatDate(charge.cashOutflowDate)}
+                          </li>
+                        ))}
+                      </ul>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </section>
 
       <div className={styles.forecastHeader}>
         <Link

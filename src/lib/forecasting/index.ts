@@ -1,5 +1,6 @@
 import type {
   BillingCycle,
+  DebtSummary,
   EomForecastLineItem,
   EomForecastResult,
   PaymentMethodInput,
@@ -11,6 +12,7 @@ import type {
 export type {
   BillingCycle,
   ChargeSource,
+  DebtSummary,
   EomForecastLineItem,
   EomForecastResult,
   PaymentMethodInput,
@@ -189,6 +191,30 @@ export function expandSubscriptionOccurrences(
   return occurrences;
 }
 
+/** Groups resolved charges by payment method, summing amounts (rounded to
+ * cents at each step to avoid floating-point drift), sorted largest first. */
+function groupChargesByPaymentMethod(charges: ResolvedCharge[]): EomForecastLineItem[] {
+  const lineItemsByPaymentMethod = new Map<string, EomForecastLineItem>();
+
+  for (const charge of charges) {
+    const existing = lineItemsByPaymentMethod.get(charge.paymentMethodId);
+    if (existing) {
+      existing.amountDue = roundCurrency(existing.amountDue + charge.amount);
+      existing.charges.push(charge);
+    } else {
+      lineItemsByPaymentMethod.set(charge.paymentMethodId, {
+        paymentMethodId: charge.paymentMethodId,
+        amountDue: roundCurrency(charge.amount),
+        charges: [charge],
+      });
+    }
+  }
+
+  return Array.from(lineItemsByPaymentMethod.values()).sort(
+    (a, b) => b.amountDue - a.amountDue
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Top-level forecast
 // ---------------------------------------------------------------------------
@@ -277,27 +303,121 @@ export function computeEomForecast(
       charge.cashOutflowDate >= monthStart && charge.cashOutflowDate <= monthEnd
   );
 
-  const lineItemsByPaymentMethod = new Map<string, EomForecastLineItem>();
-  for (const charge of chargesInMonth) {
-    const existing = lineItemsByPaymentMethod.get(charge.paymentMethodId);
-    if (existing) {
-      existing.amountDue = roundCurrency(existing.amountDue + charge.amount);
-      existing.charges.push(charge);
-    } else {
-      lineItemsByPaymentMethod.set(charge.paymentMethodId, {
-        paymentMethodId: charge.paymentMethodId,
-        amountDue: roundCurrency(charge.amount),
-        charges: [charge],
-      });
-    }
-  }
-
-  const lineItems = Array.from(lineItemsByPaymentMethod.values()).sort(
-    (a, b) => b.amountDue - a.amountDue
-  );
+  const lineItems = groupChargesByPaymentMethod(chargesInMonth);
   const total = roundCurrency(
     lineItems.reduce((sum, item) => sum + item.amountDue, 0)
   );
 
   return { referenceMonthStart: monthStart, referenceMonthEnd: monthEnd, total, lineItems };
+}
+
+// ---------------------------------------------------------------------------
+// Total debt + payoff ETA
+// ---------------------------------------------------------------------------
+
+export interface ComputeDebtSummaryOptions {
+  /** "Now", for splitting past (already incurred) from future (not yet
+   * charged) occurrences. Defaults to `new Date()`. */
+  asOfDate?: Date;
+}
+
+/**
+ * Computes total outstanding debt and a payoff ETA, as of `asOfDate`
+ * (default now), assuming no further purchases or ongoing-subscription
+ * charges are added from this point on. Debt here means:
+ *
+ * - Any already-incurred charge (purchase, or subscription occurrence —
+ *   ongoing or fixed-term) whose cash-outflow date hasn't happened yet
+ *   (charged to a credit card but not yet paid off).
+ * - Every *remaining* (not-yet-charged) installment of an active
+ *   FIXED_TERM subscription, since those are a committed obligation with
+ *   a known end, unlike ONGOING_MONTHLY subscriptions which recur
+ *   indefinitely and are treated as regular ongoing expenses rather than
+ *   "debt to pay off".
+ *
+ * `payoffEta` is the latest cash-outflow date among all of the above —
+ * the date by which everything currently owed will be fully paid off,
+ * assuming nothing new is added. `null` when there's no outstanding debt.
+ */
+export function computeDebtSummary(
+  paymentMethods: PaymentMethodInput[],
+  purchases: PurchaseInput[],
+  subscriptions: SubscriptionInput[],
+  options: ComputeDebtSummaryOptions = {}
+): DebtSummary {
+  const asOfDate = options.asOfDate ?? new Date();
+  const paymentMethodsById = new Map(paymentMethods.map((pm) => [pm.id, pm]));
+  const debtCharges: ResolvedCharge[] = [];
+
+  // Already-incurred purchases not yet paid off.
+  for (const purchase of purchases) {
+    if (!purchase.paymentMethodId || purchase.purchaseDate > asOfDate) {
+      continue;
+    }
+    const paymentMethod = paymentMethodsById.get(purchase.paymentMethodId);
+    if (!paymentMethod) {
+      continue;
+    }
+    const cashOutflowDate = resolveCashOutflowDate(paymentMethod, purchase.purchaseDate);
+    if (cashOutflowDate <= asOfDate) {
+      continue; // already paid off
+    }
+    debtCharges.push({
+      source: "PURCHASE",
+      sourceId: purchase.id,
+      paymentMethodId: purchase.paymentMethodId,
+      amount: purchase.amount,
+      chargeDate: purchase.purchaseDate,
+      cashOutflowDate,
+    });
+  }
+
+  for (const subscription of subscriptions) {
+    const paymentMethod = paymentMethodsById.get(subscription.paymentMethodId);
+    if (!paymentMethod) {
+      continue;
+    }
+
+    // FIXED_TERM: every installment (past-and-unpaid, or not yet charged)
+    // counts as debt — the whole term is a committed obligation.
+    // ONGOING_MONTHLY: only already-incurred-but-unpaid occurrences count;
+    // future occurrences are an ongoing expense, not debt to pay off.
+    const windowEnd =
+      subscription.billingType === "FIXED_TERM"
+        ? dateAtDayOfMonth(
+            absoluteMonth(subscription.startDate) + (subscription.totalMonths ?? 0),
+            subscription.billingDayOfMonth
+          )
+        : asOfDate;
+
+    const occurrenceDates = expandSubscriptionOccurrences(
+      subscription,
+      subscription.startDate,
+      windowEnd
+    );
+
+    for (const occurrenceDate of occurrenceDates) {
+      const cashOutflowDate = resolveCashOutflowDate(paymentMethod, occurrenceDate);
+      if (cashOutflowDate <= asOfDate) {
+        continue; // already paid off
+      }
+      debtCharges.push({
+        source: "SUBSCRIPTION",
+        sourceId: subscription.id,
+        paymentMethodId: subscription.paymentMethodId,
+        amount: subscription.amount,
+        chargeDate: occurrenceDate,
+        cashOutflowDate,
+      });
+    }
+  }
+
+  const lineItems = groupChargesByPaymentMethod(debtCharges);
+  const total = roundCurrency(lineItems.reduce((sum, item) => sum + item.amountDue, 0));
+  const payoffEta =
+    debtCharges.length === 0
+      ? null
+      : new Date(Math.max(...debtCharges.map((charge) => charge.cashOutflowDate.getTime())));
+
+  return { asOf: asOfDate, total, payoffEta, lineItems };
 }

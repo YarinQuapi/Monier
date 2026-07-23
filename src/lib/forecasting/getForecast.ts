@@ -1,8 +1,15 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { computeEomForecast, endOfUTCMonth, roundCurrency, startOfUTCMonth } from "./index";
+import {
+  computeDebtSummary,
+  computeEomForecast,
+  endOfUTCMonth,
+  roundCurrency,
+  startOfUTCMonth,
+} from "./index";
 import type {
   CashFlowSummary,
+  DebtSummary,
   EomForecastResult,
   IncomeSummary,
   PaymentMethodInput,
@@ -11,21 +18,21 @@ import type {
 } from "./types";
 
 /**
- * Data-access wrapper around the pure forecasting engine: loads a user's
- * payment methods, purchases, and subscriptions from Prisma, adapts them
- * (Decimal -> number) into the engine's plain input types, and computes
- * the EOM cash forecast for the given reference month.
+ * Loads a user's payment methods, purchases, and subscriptions from Prisma
+ * and adapts them (Decimal -> number) into the forecasting engine's plain
+ * input types. Shared by every forecast/debt function below.
  *
  * Note: this currently loads *all* of a user's purchases/subscriptions
  * rather than pre-filtering by date in the query. Fine at this app's scale
  * (personal finance, single-user datasets); if that ever becomes a
- * bottleneck, bound the purchases query to a window around referenceDate
- * mirroring the engine's own lookback (see DEFAULT_LOOKBACK_MONTHS).
+ * bottleneck, bound the purchases query to a window mirroring the engine's
+ * own lookback (see DEFAULT_LOOKBACK_MONTHS in ./index.ts).
  */
-export async function getEomForecastForUser(
-  userId: string,
-  referenceDate: Date
-): Promise<EomForecastResult> {
+async function loadForecastInputsForUser(userId: string): Promise<{
+  paymentMethodInputs: PaymentMethodInput[];
+  purchaseInputs: PurchaseInput[];
+  subscriptionInputs: SubscriptionInput[];
+}> {
   const [paymentMethods, purchases, subscriptions] = await Promise.all([
     prisma.paymentMethod.findMany({ where: { userId } }),
     prisma.purchase.findMany({ where: { userId } }),
@@ -59,12 +66,36 @@ export async function getEomForecastForUser(
     isActive: sub.isActive,
   }));
 
+  return { paymentMethodInputs, purchaseInputs, subscriptionInputs };
+}
+
+/**
+ * Computes the EOM cash forecast for the given reference month.
+ */
+export async function getEomForecastForUser(
+  userId: string,
+  referenceDate: Date
+): Promise<EomForecastResult> {
+  const { paymentMethodInputs, purchaseInputs, subscriptionInputs } =
+    await loadForecastInputsForUser(userId);
+
   return computeEomForecast(
     paymentMethodInputs,
     purchaseInputs,
     subscriptionInputs,
     referenceDate
   );
+}
+
+/**
+ * Computes total outstanding debt and a payoff ETA as of now. See
+ * computeDebtSummary in ./index.ts for exactly what counts as "debt".
+ */
+export async function getDebtSummaryForUser(userId: string): Promise<DebtSummary> {
+  const { paymentMethodInputs, purchaseInputs, subscriptionInputs } =
+    await loadForecastInputsForUser(userId);
+
+  return computeDebtSummary(paymentMethodInputs, purchaseInputs, subscriptionInputs);
 }
 
 /**
@@ -125,5 +156,41 @@ export async function getCashFlowSummaryForUser(
     income,
     forecast,
     net: roundCurrency(income.total - forecast.total),
+  };
+}
+
+export interface DashboardSummary {
+  cashFlow: CashFlowSummary;
+  debt: DebtSummary;
+}
+
+/**
+ * Everything the dashboard needs in one pass: loads payment
+ * methods/purchases/subscriptions/income once and derives the cash-flow
+ * summary (for the reference month) plus the total-debt/payoff-ETA
+ * summary (as of now) from the same data, instead of re-querying Prisma
+ * per metric.
+ */
+export async function getDashboardSummaryForUser(
+  userId: string,
+  referenceDate: Date
+): Promise<DashboardSummary> {
+  const [{ paymentMethodInputs, purchaseInputs, subscriptionInputs }, income] =
+    await Promise.all([
+      loadForecastInputsForUser(userId),
+      getIncomeSummaryForUser(userId, referenceDate),
+    ]);
+
+  const forecast = computeEomForecast(
+    paymentMethodInputs,
+    purchaseInputs,
+    subscriptionInputs,
+    referenceDate
+  );
+  const debt = computeDebtSummary(paymentMethodInputs, purchaseInputs, subscriptionInputs);
+
+  return {
+    cashFlow: { income, forecast, net: roundCurrency(income.total - forecast.total) },
+    debt,
   };
 }
