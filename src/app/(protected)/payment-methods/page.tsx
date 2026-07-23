@@ -70,8 +70,20 @@ export default async function PaymentMethodsPage({
                     {pm.institution ? ` (${pm.institution})` : ""}
                   </td>
                   <td>
-                    <Badge tone={pm.type === "CREDIT_CARD" ? "primary" : "neutral"}>
-                      {pm.type === "CREDIT_CARD" ? "Credit card" : "Bank account"}
+                    <Badge
+                      tone={
+                        pm.type === "CREDIT_CARD"
+                          ? "primary"
+                          : pm.type === "DEBIT_CARD"
+                            ? "success"
+                            : "neutral"
+                      }
+                    >
+                      {pm.type === "CREDIT_CARD"
+                        ? "Credit card"
+                        : pm.type === "DEBIT_CARD"
+                          ? "Debit card"
+                          : "Bank account"}
                     </Badge>
                   </td>
                   <td className={styles.muted}>

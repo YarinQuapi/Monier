@@ -38,6 +38,12 @@ function formatCurrency(amount: number): string {
   return `$${amount.toFixed(2)}`;
 }
 
+function formatPaymentMethodType(type: "CREDIT_CARD" | "DEBIT_CARD" | "BANK_ACCOUNT" | undefined): string {
+  if (type === "CREDIT_CARD") return "Credit card";
+  if (type === "DEBIT_CARD") return "Debit card";
+  return "Bank account";
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -115,9 +121,7 @@ export default async function DashboardPage({
                           {paymentMethod?.nickname ?? "Unknown payment method"}
                         </span>
                         <Badge tone="neutral">
-                          {paymentMethod?.type === "CREDIT_CARD"
-                            ? "Credit card"
-                            : "Bank account"}
+                          {formatPaymentMethodType(paymentMethod?.type)}
                         </Badge>
                       </div>
                     </td>
@@ -232,9 +236,7 @@ export default async function DashboardPage({
                             {paymentMethod?.nickname ?? "Unknown payment method"}
                           </span>
                           <Badge tone="neutral">
-                            {paymentMethod?.type === "CREDIT_CARD"
-                              ? "Credit card"
-                              : "Bank account"}
+                            {formatPaymentMethodType(paymentMethod?.type)}
                           </Badge>
                         </div>
                       </td>

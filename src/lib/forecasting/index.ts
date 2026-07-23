@@ -126,14 +126,15 @@ export function resolveBillingCycle(
 
 /**
  * Resolves the date cash actually leaves the user's pocket for a charge on
- * a given payment method: immediately (the charge date itself) for bank
- * accounts, or the statement's due date for credit cards.
+ * a given payment method: immediately (the charge date itself) for debit
+ * cards and bank accounts — both settle straight away, with no statement
+ * cycle — or the statement's due date for credit cards.
  */
 export function resolveCashOutflowDate(
   paymentMethod: PaymentMethodInput,
   chargeDate: Date
 ): Date {
-  if (paymentMethod.type === "BANK_ACCOUNT") {
+  if (paymentMethod.type !== "CREDIT_CARD") {
     return chargeDate;
   }
   return resolveBillingCycle(paymentMethod, chargeDate).dueDate;
@@ -164,10 +165,12 @@ export function expandSubscriptionOccurrences(
     subscription.billingType === "FIXED_TERM"
       ? subscription.totalMonths ?? 0
       : Infinity;
+  // ONGOING_ANNUAL recurs every 12 months instead of every month.
+  const stepMonths = subscription.billingType === "ONGOING_ANNUAL" ? 12 : 1;
 
   for (let i = 0; i < maxOccurrences; i += 1) {
     const occurrenceDate = dateAtDayOfMonth(
-      startMonth + i,
+      startMonth + i * stepMonths,
       subscription.billingDayOfMonth
     );
 
@@ -176,7 +179,7 @@ export function expandSubscriptionOccurrences(
     }
 
     if (
-      subscription.billingType === "ONGOING_MONTHLY" &&
+      subscription.billingType !== "FIXED_TERM" &&
       subscription.endDate &&
       occurrenceDate > subscription.endDate
     ) {
@@ -232,9 +235,9 @@ export interface ComputeEomForecastOptions {
  *
  * For each candidate charge (a purchase, or one resolved occurrence of a
  * subscription), the actual cash-outflow date is resolved via the owning
- * payment method (immediate for bank accounts, statement due date for
- * credit cards), then charges whose outflow date falls in the reference
- * month are summed, grouped by payment method.
+ * payment method (immediate for debit cards/bank accounts, statement due
+ * date for credit cards), then charges whose outflow date falls in the
+ * reference month are summed, grouped by payment method.
  */
 export function computeEomForecast(
   paymentMethods: PaymentMethodInput[],
@@ -331,9 +334,9 @@ export interface ComputeDebtSummaryOptions {
  *   (charged to a credit card but not yet paid off).
  * - Every *remaining* (not-yet-charged) installment of an active
  *   FIXED_TERM subscription, since those are a committed obligation with
- *   a known end, unlike ONGOING_MONTHLY subscriptions which recur
- *   indefinitely and are treated as regular ongoing expenses rather than
- *   "debt to pay off".
+ *   a known end, unlike ONGOING_MONTHLY/ONGOING_ANNUAL subscriptions which
+ *   recur indefinitely and are treated as regular ongoing expenses rather
+ *   than "debt to pay off".
  *
  * `payoffEta` is the latest cash-outflow date among all of the above —
  * the date by which everything currently owed will be fully paid off,
@@ -380,8 +383,9 @@ export function computeDebtSummary(
 
     // FIXED_TERM: every installment (past-and-unpaid, or not yet charged)
     // counts as debt — the whole term is a committed obligation.
-    // ONGOING_MONTHLY: only already-incurred-but-unpaid occurrences count;
-    // future occurrences are an ongoing expense, not debt to pay off.
+    // ONGOING_MONTHLY/ONGOING_ANNUAL: only already-incurred-but-unpaid
+    // occurrences count; future occurrences are an ongoing expense, not
+    // debt to pay off.
     const windowEnd =
       subscription.billingType === "FIXED_TERM"
         ? dateAtDayOfMonth(

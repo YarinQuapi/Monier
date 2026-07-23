@@ -41,6 +41,7 @@ async function readSubscriptionFields(formData: FormData, userId: string) {
 
   if (
     billingTypeRaw !== SubscriptionBillingType.ONGOING_MONTHLY &&
+    billingTypeRaw !== SubscriptionBillingType.ONGOING_ANNUAL &&
     billingTypeRaw !== SubscriptionBillingType.FIXED_TERM
   ) {
     return { error: "Choose a billing type." } as const;
@@ -70,7 +71,7 @@ async function readSubscriptionFields(formData: FormData, userId: string) {
   }
 
   let endDate: Date | null = null;
-  if (billingTypeRaw === SubscriptionBillingType.ONGOING_MONTHLY && endDateRaw.length > 0) {
+  if (billingTypeRaw !== SubscriptionBillingType.FIXED_TERM && endDateRaw.length > 0) {
     endDate = parseDate(endDateRaw);
     if (!endDate) {
       return { error: "End date is invalid." } as const;

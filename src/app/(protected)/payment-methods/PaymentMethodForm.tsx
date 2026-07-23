@@ -12,7 +12,7 @@ interface PaymentMethodFormProps {
   ) => Promise<PaymentMethodFormState>;
   submitLabel: string;
   defaultValues?: {
-    type?: "CREDIT_CARD" | "BANK_ACCOUNT";
+    type?: "CREDIT_CARD" | "DEBIT_CARD" | "BANK_ACCOUNT";
     nickname?: string;
     institution?: string | null;
     cycleStartDay?: number | null;
@@ -27,7 +27,7 @@ export function PaymentMethodForm({
   defaultValues,
 }: PaymentMethodFormProps) {
   const [state, formAction, pending] = useActionState(action, undefined);
-  const [type, setType] = useState<"CREDIT_CARD" | "BANK_ACCOUNT">(
+  const [type, setType] = useState<"CREDIT_CARD" | "DEBIT_CARD" | "BANK_ACCOUNT">(
     defaultValues?.type ?? "BANK_ACCOUNT"
   );
 
@@ -40,10 +40,13 @@ export function PaymentMethodForm({
           name="type"
           value={type}
           onChange={(event) =>
-            setType(event.target.value as "CREDIT_CARD" | "BANK_ACCOUNT")
+            setType(
+              event.target.value as "CREDIT_CARD" | "DEBIT_CARD" | "BANK_ACCOUNT"
+            )
           }
         >
           <option value="BANK_ACCOUNT">Bank account</option>
+          <option value="DEBIT_CARD">Debit card</option>
           <option value="CREDIT_CARD">Credit card</option>
         </select>
       </div>
@@ -56,7 +59,11 @@ export function PaymentMethodForm({
           type="text"
           required
           placeholder={
-            type === "CREDIT_CARD" ? "e.g. Visa Personal" : "e.g. Checking"
+            type === "CREDIT_CARD"
+              ? "e.g. Visa Personal"
+              : type === "DEBIT_CARD"
+                ? "e.g. Visa Debit"
+                : "e.g. Checking"
           }
           defaultValue={defaultValues?.nickname}
         />

@@ -84,7 +84,9 @@ export default async function SubscriptionsPage({
                     <Badge tone={sub.billingType === "FIXED_TERM" ? "warning" : "primary"}>
                       {sub.billingType === "FIXED_TERM"
                         ? `Fixed term: ${sub.totalMonths}mo`
-                        : "Ongoing monthly"}
+                        : sub.billingType === "ONGOING_ANNUAL"
+                          ? "Ongoing annual"
+                          : "Ongoing monthly"}
                     </Badge>
                     <br />
                     <small className={styles.muted}>from {formatDate(sub.startDate)}</small>

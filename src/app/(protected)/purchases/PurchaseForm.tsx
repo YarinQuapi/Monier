@@ -13,7 +13,7 @@ interface CategoryOption {
 interface PaymentMethodOption {
   id: string;
   nickname: string;
-  type: "CREDIT_CARD" | "BANK_ACCOUNT";
+  type: "CREDIT_CARD" | "DEBIT_CARD" | "BANK_ACCOUNT";
 }
 
 interface PurchaseFormProps {
@@ -102,7 +102,12 @@ export function PurchaseForm({
             {paymentMethods.map((pm) => (
               <option key={pm.id} value={pm.id}>
                 {pm.nickname} (
-                {pm.type === "CREDIT_CARD" ? "Credit card" : "Bank account"})
+                {pm.type === "CREDIT_CARD"
+                  ? "Credit card"
+                  : pm.type === "DEBIT_CARD"
+                    ? "Debit card"
+                    : "Bank account"}
+                )
               </option>
             ))}
           </select>

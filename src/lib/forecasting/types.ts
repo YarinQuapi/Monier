@@ -3,7 +3,7 @@
 // instead of Decimal) so the algorithm stays unit-testable without a
 // database and without pulling in the generated Prisma client.
 
-export type PaymentMethodKind = "CREDIT_CARD" | "BANK_ACCOUNT";
+export type PaymentMethodKind = "CREDIT_CARD" | "DEBIT_CARD" | "BANK_ACCOUNT";
 
 export interface PaymentMethodInput {
   id: string;
@@ -16,7 +16,10 @@ export interface PaymentMethodInput {
   dueMonthOffset?: number | null;
 }
 
-export type SubscriptionBillingKind = "ONGOING_MONTHLY" | "FIXED_TERM";
+export type SubscriptionBillingKind =
+  | "ONGOING_MONTHLY"
+  | "ONGOING_ANNUAL"
+  | "FIXED_TERM";
 
 /** A one-off expense, already tied to a specific calendar date. */
 export interface PurchaseInput {
@@ -33,13 +36,15 @@ export interface SubscriptionInput {
   paymentMethodId: string;
   amount: number;
   billingType: SubscriptionBillingKind;
-  /** Day of month the charge occurs (clamped to shorter months). */
+  /** Day of month the charge occurs (clamped to shorter months). For
+   * ONGOING_ANNUAL, the charge recurs every 12 months in the same
+   * calendar month as startDate. */
   billingDayOfMonth: number;
   /** First charge date; supports deferred starts. */
   startDate: Date;
   /** Required (and only meaningful) when billingType = FIXED_TERM. */
   totalMonths?: number | null;
-  /** Optional explicit end date, only meaningful for ONGOING_MONTHLY. */
+  /** Optional explicit end date, only meaningful for ONGOING_MONTHLY/ONGOING_ANNUAL. */
   endDate?: Date | null;
   isActive: boolean;
 }

@@ -26,7 +26,11 @@ function readPaymentMethodFields(formData: FormData) {
   const nickname = String(formData.get("nickname") ?? "").trim();
   const institutionRaw = String(formData.get("institution") ?? "").trim();
 
-  if (type !== "CREDIT_CARD" && type !== "BANK_ACCOUNT") {
+  if (
+    type !== "CREDIT_CARD" &&
+    type !== "DEBIT_CARD" &&
+    type !== "BANK_ACCOUNT"
+  ) {
     return { error: "Choose a payment method type." } as const;
   }
 
@@ -36,10 +40,13 @@ function readPaymentMethodFields(formData: FormData) {
 
   const institution = institutionRaw.length > 0 ? institutionRaw : null;
 
-  if (type === "BANK_ACCOUNT") {
+  if (type === "BANK_ACCOUNT" || type === "DEBIT_CARD") {
     return {
       data: {
-        type: PaymentMethodType.BANK_ACCOUNT,
+        type:
+          type === "DEBIT_CARD"
+            ? PaymentMethodType.DEBIT_CARD
+            : PaymentMethodType.BANK_ACCOUNT,
         nickname,
         institution,
         cycleStartDay: null,

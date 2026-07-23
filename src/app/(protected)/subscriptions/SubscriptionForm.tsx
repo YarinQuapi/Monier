@@ -8,7 +8,7 @@ import styles from "./page.module.css";
 interface PaymentMethodOption {
   id: string;
   nickname: string;
-  type: "CREDIT_CARD" | "BANK_ACCOUNT";
+  type: "CREDIT_CARD" | "DEBIT_CARD" | "BANK_ACCOUNT";
 }
 
 interface SubscriptionFormProps {
@@ -23,7 +23,7 @@ interface SubscriptionFormProps {
     accountLabel?: string;
     amount?: number;
     paymentMethodId?: string;
-    billingType?: "ONGOING_MONTHLY" | "FIXED_TERM";
+    billingType?: "ONGOING_MONTHLY" | "ONGOING_ANNUAL" | "FIXED_TERM";
     startDate?: string; // yyyy-mm-dd
     totalMonths?: number | null;
     endDate?: string | null; // yyyy-mm-dd
@@ -39,7 +39,7 @@ export function SubscriptionForm({
 }: SubscriptionFormProps) {
   const [state, formAction, pending] = useActionState(action, undefined);
   const [billingType, setBillingType] = useState<
-    "ONGOING_MONTHLY" | "FIXED_TERM"
+    "ONGOING_MONTHLY" | "ONGOING_ANNUAL" | "FIXED_TERM"
   >(defaultValues?.billingType ?? "ONGOING_MONTHLY");
 
   return (
@@ -98,7 +98,12 @@ export function SubscriptionForm({
             {paymentMethods.map((pm) => (
               <option key={pm.id} value={pm.id}>
                 {pm.nickname} (
-                {pm.type === "CREDIT_CARD" ? "Credit card" : "Bank account"})
+                {pm.type === "CREDIT_CARD"
+                  ? "Credit card"
+                  : pm.type === "DEBIT_CARD"
+                    ? "Debit card"
+                    : "Bank account"}
+                )
               </option>
             ))}
           </select>
@@ -114,11 +119,15 @@ export function SubscriptionForm({
             value={billingType}
             onChange={(event) =>
               setBillingType(
-                event.target.value as "ONGOING_MONTHLY" | "FIXED_TERM"
+                event.target.value as
+                  | "ONGOING_MONTHLY"
+                  | "ONGOING_ANNUAL"
+                  | "FIXED_TERM"
               )
             }
           >
             <option value="ONGOING_MONTHLY">Ongoing (monthly)</option>
+            <option value="ONGOING_ANNUAL">Ongoing (annual)</option>
             <option value="FIXED_TERM">Fixed term (N months)</option>
           </select>
         </div>

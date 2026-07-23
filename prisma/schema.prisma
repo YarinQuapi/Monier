@@ -24,6 +24,7 @@ enum Role {
 
 enum PaymentMethodType {
   CREDIT_CARD
+  DEBIT_CARD
   BANK_ACCOUNT
 }
 
@@ -34,6 +35,7 @@ enum IncomeType {
 
 enum SubscriptionBillingType {
   ONGOING_MONTHLY
+  ONGOING_ANNUAL
   FIXED_TERM
 }
 
@@ -95,7 +97,8 @@ model Income {
 }
 
 /// A credit card or bank account belonging to a user.
-/// Credit-card billing-cycle fields are null for bank accounts.
+/// Credit-card billing-cycle fields are null for debit cards and bank
+/// accounts (both settle immediately, with no statement/billing cycle).
 model PaymentMethod {
   id          String            @id @default(cuid())
   userId      String
@@ -134,13 +137,14 @@ model Subscription {
   paymentMethodId   String
   paymentMethod     PaymentMethod           @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
   billingType       SubscriptionBillingType
-  /// Day of month the charge occurs.
+  /// Day of month the charge occurs. For ONGOING_ANNUAL, the charge recurs
+  /// every 12 months in the same calendar month as startDate.
   billingDayOfMonth Int
   /// First charge date; supports deferred starts (e.g. starts 2 months from now).
   startDate         DateTime
   /// Required when billingType = FIXED_TERM (e.g. 6-month plan).
   totalMonths       Int?
-  /// Optional explicit end date for ONGOING_MONTHLY subscriptions.
+  /// Optional explicit end date for ONGOING_MONTHLY/ONGOING_ANNUAL subscriptions.
   endDate           DateTime?
   isActive          Boolean                 @default(true)
   notes             String?
