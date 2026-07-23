@@ -2,24 +2,25 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  /* Fill the viewport (minus the main content area's vertical padding) so
-   * the page itself never scrolls — each card scrolls internally instead. */
-  height: calc(100vh - 4.5rem);
-  min-height: 0;
 }
 
 .grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.5rem;
-  flex: 1;
-  min-height: 0;
+  /* Don't stretch cards to match each other's height — each one should
+   * size to its own content, up to the cap set on .gridCard below. */
+  align-items: start;
 }
 
 .gridCard {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  /* Cards size to their content, but never grow past this so the page
+   * itself doesn't have to scroll — long content scrolls internally
+   * inside .cardScroll instead. */
+  max-height: calc(100vh - 9rem);
   overflow: hidden;
 }
 
@@ -27,18 +28,13 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding-right: 0.4rem;
 }
 
 @media (max-width: 900px) {
-  .wrapper {
-    height: auto;
-    min-height: 0;
-  }
-
   .grid {
     grid-template-columns: 1fr;
-    flex: none;
   }
 
   .gridCard {
