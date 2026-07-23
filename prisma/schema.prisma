@@ -1,0 +1,176 @@
+// Prisma schema for the Money Management System.
+// Conventions: cuid() string IDs, createdAt/updatedAt on every model,
+// explicit @relation on both sides, @@index on frequently queried FKs/dates.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  // Connection URL is configured in prisma.config.ts (Prisma ORM 7+),
+  // not here. See DATABASE_URL in .env.
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum PaymentMethodType {
+  CREDIT_CARD
+  BANK_ACCOUNT
+}
+
+enum IncomeType {
+  SALARY
+  MISC
+}
+
+enum SubscriptionBillingType {
+  ONGOING_MONTHLY
+  FIXED_TERM
+}
+
+// ---------------------------------------------------------------------------
+// Core models
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  role         Role     @default(USER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  incomes           Income[]
+  paymentMethods    PaymentMethod[]
+  subscriptions     Subscription[]
+  purchases         Purchase[]
+  categoriesCreated Category[]      @relation("CategoryCreatedBy")
+
+  @@index([role])
+}
+
+/// Global, admin-curated expense taxonomy shared by every user.
+/// Created/updated/removed exclusively via the authenticated Admin Panel.
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  color       String?
+  icon        String?
+  createdById String
+  createdBy   User     @relation("CategoryCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  purchases Purchase[]
+
+  @@index([createdById])
+}
+
+/// Manually logged income (salary or miscellaneous), per user.
+model Income {
+  id         String     @id @default(cuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       IncomeType
+  label      String
+  amount     Decimal    @db.Decimal(12, 2)
+  receivedAt DateTime
+  notes      String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([userId, receivedAt])
+}
+
+/// A credit card or bank account belonging to a user.
+/// Credit-card billing-cycle fields are null for bank accounts.
+model PaymentMethod {
+  id          String            @id @default(cuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        PaymentMethodType
+  nickname    String
+  institution String?
+  isActive    Boolean           @default(true)
+
+  /// Day of month (1-31) the billing cycle starts, e.g. 10 -> cycle runs 10th-9th. Credit cards only.
+  cycleStartDay  Int?
+  /// Day of month (1-31) the statement payment is due. Credit cards only.
+  paymentDueDay  Int?
+  /// How many months after the cycle closes the payment is due (issuer-specific). Credit cards only.
+  dueMonthOffset Int?     @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subscriptions Subscription[]
+  purchases     Purchase[]
+
+  @@index([userId])
+  @@index([userId, type])
+}
+
+/// A recurring or fixed-term subscription, always tied to one payment method.
+/// Multiple distinct accounts for the same provider are supported via accountLabel.
+model Subscription {
+  id                String                  @id @default(cuid())
+  userId            String
+  user              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerName      String
+  accountLabel      String
+  amount            Decimal                 @db.Decimal(12, 2)
+  paymentMethodId   String
+  paymentMethod     PaymentMethod           @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
+  billingType       SubscriptionBillingType
+  /// Day of month the charge occurs.
+  billingDayOfMonth Int
+  /// First charge date; supports deferred starts (e.g. starts 2 months from now).
+  startDate         DateTime
+  /// Required when billingType = FIXED_TERM (e.g. 6-month plan).
+  totalMonths       Int?
+  /// Optional explicit end date for ONGOING_MONTHLY subscriptions.
+  endDate           DateTime?
+  isActive          Boolean                 @default(true)
+  notes             String?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  @@index([userId])
+  @@index([paymentMethodId])
+  @@index([userId, isActive])
+}
+
+/// A single one-off expense, tagged with a global category and
+/// optionally linked to the payment method used.
+model Purchase {
+  id              String         @id @default(cuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId      String
+  category        Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  paymentMethodId String?
+  paymentMethod   PaymentMethod? @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  amount          Decimal        @db.Decimal(12, 2)
+  merchant        String?
+  purchaseDate    DateTime
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([userId, purchaseDate])
+  @@index([categoryId])
+  @@index([paymentMethodId])
+}
