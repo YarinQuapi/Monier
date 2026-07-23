@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { verifySession } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
-import { getEomForecastForUser } from "@/lib/forecasting/getForecast";
+import { getCashFlowSummaryForUser } from "@/lib/forecasting/getForecast";
 import styles from "./page.module.css";
 
 function parseMonthParam(month: string | undefined): Date {
@@ -42,10 +42,11 @@ export default async function DashboardPage({
   const { month } = await searchParams;
   const referenceDate = parseMonthParam(month);
 
-  const [forecast, paymentMethods] = await Promise.all([
-    getEomForecastForUser(session.user.id, referenceDate),
+  const [cashFlow, paymentMethods] = await Promise.all([
+    getCashFlowSummaryForUser(session.user.id, referenceDate),
     prisma.paymentMethod.findMany({ where: { userId: session.user.id } }),
   ]);
+  const { forecast, income, net } = cashFlow;
 
   const paymentMethodsById = new Map(paymentMethods.map((pm) => [pm.id, pm]));
 
@@ -67,33 +68,74 @@ export default async function DashboardPage({
         <p>Welcome, {session.user.email}.</p>
       </div>
 
-      <section className={styles.section}>
-        <div className={styles.forecastHeader}>
-          <Link
-            href={`/dashboard?month=${formatMonthParam(prevMonth)}`}
-            className={styles.navLink}
-          >
-            &larr; Prev
-          </Link>
-          <div className={styles.forecastTitle}>
-            <h2>End-of-month cash forecast</h2>
-            <span>
-              {formatMonthLabel(referenceDate)}
-              {isCurrentMonth ? " (current)" : ""}
-            </span>
-          </div>
-          <Link
-            href={`/dashboard?month=${formatMonthParam(nextMonth)}`}
-            className={styles.navLink}
-          >
-            Next &rarr;
-          </Link>
+      <div className={styles.forecastHeader}>
+        <Link
+          href={`/dashboard?month=${formatMonthParam(prevMonth)}`}
+          className={styles.navLink}
+        >
+          &larr; Prev
+        </Link>
+        <div className={styles.forecastTitle}>
+          <h2>Cash flow</h2>
+          <span>
+            {formatMonthLabel(referenceDate)}
+            {isCurrentMonth ? " (current)" : ""}
+          </span>
         </div>
+        <Link
+          href={`/dashboard?month=${formatMonthParam(nextMonth)}`}
+          className={styles.navLink}
+        >
+          Next &rarr;
+        </Link>
+      </div>
 
-        <p className={styles.total}>
-          {formatCurrency(forecast.total)}
-          <span className={styles.totalLabel}>estimated cash needed</span>
-        </p>
+      <section className={styles.statGrid}>
+        <div className={styles.statCard}>
+          <span className={styles.statLabel}>Income</span>
+          <span className={styles.statValue}>{formatCurrency(income.total)}</span>
+          <span className={styles.statSubtext}>
+            {income.entries.length} entr{income.entries.length === 1 ? "y" : "ies"}
+          </span>
+        </div>
+        <div className={styles.statCard}>
+          <span className={styles.statLabel}>Cash needed</span>
+          <span className={styles.statValue}>{formatCurrency(forecast.total)}</span>
+          <span className={styles.statSubtext}>
+            across {forecast.lineItems.length} payment method
+            {forecast.lineItems.length === 1 ? "" : "s"}
+          </span>
+        </div>
+        <div
+          className={`${styles.statCard} ${net >= 0 ? styles.statPositive : styles.statNegative}`}
+        >
+          <span className={styles.statLabel}>Net</span>
+          <span className={styles.statValue}>{formatCurrency(net)}</span>
+          <span className={styles.statSubtext}>
+            {net >= 0 ? "projected surplus" : "projected shortfall"}
+          </span>
+        </div>
+      </section>
+
+      {income.entries.length > 0 && (
+        <section className={styles.section}>
+          <h2>Income this month</h2>
+          <ul className={styles.chargeList}>
+            {income.entries.map((entry) => (
+              <li key={entry.id}>
+                <span className={styles.chargeBadge}>
+                  {entry.type === "SALARY" ? "Salary" : "Misc"}
+                </span>{" "}
+                {entry.label} — {formatCurrency(entry.amount)} on{" "}
+                {formatDate(entry.receivedAt)}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section className={styles.section}>
+        <h2>Cash needed by payment method</h2>
 
         {forecast.lineItems.length === 0 ? (
           <p className={styles.empty}>

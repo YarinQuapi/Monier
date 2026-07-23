@@ -49,11 +49,13 @@ function dateAtDayOfMonth(absoluteMonthIndex: number, day: number): Date {
   return new Date(Date.UTC(year, month, clampedDay));
 }
 
-function startOfUTCMonth(date: Date): Date {
+/** Start of the UTC calendar month containing `date` (day 1, 00:00:00.000). */
+export function startOfUTCMonth(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
 }
 
-function endOfUTCMonth(date: Date): Date {
+/** End of the UTC calendar month containing `date` (last day, 23:59:59.999). */
+export function endOfUTCMonth(date: Date): Date {
   return new Date(
     Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0, 23, 59, 59, 999)
   );
@@ -63,7 +65,8 @@ function addUTCMonths(date: Date, months: number): Date {
   return dateAtDayOfMonth(absoluteMonth(date) + months, date.getUTCDate());
 }
 
-function roundCurrency(amount: number): number {
+/** Rounds to 2 decimal places to avoid floating-point drift when summing money. */
+export function roundCurrency(amount: number): number {
   return Math.round(amount * 100) / 100;
 }
 

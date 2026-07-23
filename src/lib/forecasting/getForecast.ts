@@ -1,8 +1,10 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { computeEomForecast } from "./index";
+import { computeEomForecast, endOfUTCMonth, roundCurrency, startOfUTCMonth } from "./index";
 import type {
+  CashFlowSummary,
   EomForecastResult,
+  IncomeSummary,
   PaymentMethodInput,
   PurchaseInput,
   SubscriptionInput,
@@ -63,4 +65,65 @@ export async function getEomForecastForUser(
     subscriptionInputs,
     referenceDate
   );
+}
+
+/**
+ * Sums a user's logged income (salary + misc) received within the calendar
+ * month containing `referenceDate`. Unlike expenses, income has no
+ * "cash-outflow lag" concept — it's counted the month it was received.
+ */
+export async function getIncomeSummaryForUser(
+  userId: string,
+  referenceDate: Date
+): Promise<IncomeSummary> {
+  const monthStart = startOfUTCMonth(referenceDate);
+  const monthEnd = endOfUTCMonth(referenceDate);
+
+  const incomes = await prisma.income.findMany({
+    where: { userId, receivedAt: { gte: monthStart, lte: monthEnd } },
+    orderBy: { receivedAt: "asc" },
+  });
+
+  const entries = incomes.map((income) => ({
+    id: income.id,
+    type: income.type,
+    label: income.label,
+    amount: Number(income.amount),
+    receivedAt: income.receivedAt,
+  }));
+
+  const byType: Record<"SALARY" | "MISC", number> = { SALARY: 0, MISC: 0 };
+  for (const entry of entries) {
+    byType[entry.type] += entry.amount;
+  }
+  byType.SALARY = roundCurrency(byType.SALARY);
+  byType.MISC = roundCurrency(byType.MISC);
+
+  return {
+    referenceMonthStart: monthStart,
+    referenceMonthEnd: monthEnd,
+    total: roundCurrency(byType.SALARY + byType.MISC),
+    byType,
+    entries,
+  };
+}
+
+/**
+ * Combines the EOM expense forecast with the month's logged income into a
+ * single net cash-flow picture: `net = income.total - forecast.total`.
+ */
+export async function getCashFlowSummaryForUser(
+  userId: string,
+  referenceDate: Date
+): Promise<CashFlowSummary> {
+  const [forecast, income] = await Promise.all([
+    getEomForecastForUser(userId, referenceDate),
+    getIncomeSummaryForUser(userId, referenceDate),
+  ]);
+
+  return {
+    income,
+    forecast,
+    net: roundCurrency(income.total - forecast.total),
+  };
 }

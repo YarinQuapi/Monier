@@ -80,3 +80,28 @@ export interface EomForecastResult {
   total: number;
   lineItems: EomForecastLineItem[];
 }
+
+export type IncomeKind = "SALARY" | "MISC";
+
+export interface IncomeEntry {
+  id: string;
+  type: IncomeKind;
+  label: string;
+  amount: number;
+  receivedAt: Date;
+}
+
+export interface IncomeSummary {
+  referenceMonthStart: Date;
+  referenceMonthEnd: Date;
+  total: number;
+  byType: Record<IncomeKind, number>;
+  entries: IncomeEntry[];
+}
+
+export interface CashFlowSummary {
+  income: IncomeSummary;
+  forecast: EomForecastResult;
+  /** income.total - forecast.total; positive means projected surplus. */
+  net: number;
+}

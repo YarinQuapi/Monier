@@ -45,19 +45,44 @@
   background: rgba(0, 0, 0, 0.05);
 }
 
-.total {
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 0 0 1.25rem;
-  display: flex;
-  align-items: baseline;
-  gap: 0.6rem;
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
 }
 
-.totalLabel {
-  font-size: 0.85rem;
-  font-weight: 500;
-  opacity: 0.7;
+.statCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1rem 1.1rem;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.statLabel {
+  font-size: 0.8rem;
+  opacity: 0.65;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.statValue {
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.statSubtext {
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+
+.statPositive .statValue {
+  color: #1e8a4c;
+}
+
+.statNegative .statValue {
+  color: #c0392b;
 }
 
 .table {
