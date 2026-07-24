@@ -57,6 +57,7 @@ model User {
   subscriptions     Subscription[]
   purchases         Purchase[]
   categoriesCreated Category[]      @relation("CategoryCreatedBy")
+  apiTokens         ApiToken[]
 
   @@index([role])
 }
@@ -75,6 +76,7 @@ model Category {
   updatedAt   DateTime @updatedAt
 
   purchases Purchase[]
+  apiTokensDefaultingTo ApiToken[] @relation("ApiTokenDefaultCategory")
 
   @@index([createdById])
 }
@@ -120,6 +122,7 @@ model PaymentMethod {
 
   subscriptions Subscription[]
   purchases     Purchase[]
+  apiTokensDefaultingTo ApiToken[] @relation("ApiTokenDefaultPaymentMethod")
 
   @@index([userId])
   @@index([userId, type])
@@ -177,4 +180,33 @@ model Purchase {
   @@index([userId, purchaseDate])
   @@index([categoryId])
   @@index([paymentMethodId])
+}
+
+/// A personal access token for logging purchases from outside the web app
+/// (e.g. an iOS Shortcut). The raw token is shown to the user exactly once
+/// at creation time; only its SHA-256 hash is ever persisted. `tokenPrefix`
+/// (the token's first 8 chars) is stored in the clear purely so the token
+/// list UI can help the user tell tokens apart without re-exposing them.
+/// `defaultCategory`/`defaultPaymentMethod` let a quick-log request omit
+/// those fields entirely, since the whole point is a single-tap iOS
+/// Shortcut that only prompts for an amount (and optional merchant/note).
+model ApiToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  tokenHash String   @unique
+  tokenPrefix String
+
+  defaultCategoryId      String?
+  defaultCategory        Category?      @relation("ApiTokenDefaultCategory", fields: [defaultCategoryId], references: [id], onDelete: SetNull)
+  defaultPaymentMethodId String?
+  defaultPaymentMethod   PaymentMethod? @relation("ApiTokenDefaultPaymentMethod", fields: [defaultPaymentMethodId], references: [id], onDelete: SetNull)
+
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@index([defaultCategoryId])
+  @@index([defaultPaymentMethodId])
 }

@@ -15,6 +15,7 @@ const AUTHENTICATED_ROUTES = [
   "/purchases",
   "/payment-methods",
   "/subscriptions",
+  "/settings",
   "/admin",
 ];
 
