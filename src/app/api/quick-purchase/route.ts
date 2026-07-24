@@ -167,7 +167,19 @@ export async function GET(request: Request) {
   for (const [key, value] of url.searchParams.entries()) {
     fields[key] = value;
   }
-  return createPurchaseFromFields(request.headers.get("authorization"), fields);
+  return createPurchaseFromFields(
+    request.headers.get("authorization"),
+    normalizeFieldKeys(fields)
+  );
+}
+
+/** Shortcuts sometimes adds accidental trailing spaces to JSON keys (e.g. `merchant `). */
+function normalizeFieldKeys(fields: Record<string, unknown>): Record<string, unknown> {
+  const normalized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(fields)) {
+    normalized[key.trim()] = value;
+  }
+  return normalized;
 }
 
 export async function POST(request: Request) {
@@ -202,5 +214,8 @@ export async function POST(request: Request) {
     );
   }
 
-  return createPurchaseFromFields(request.headers.get("authorization"), fields);
+  return createPurchaseFromFields(
+    request.headers.get("authorization"),
+    normalizeFieldKeys(fields)
+  );
 }
