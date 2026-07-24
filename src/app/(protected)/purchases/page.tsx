@@ -152,6 +152,7 @@ export default async function PurchasesPage({
                         </Link>
                         <form action={deletePurchase}>
                           <input type="hidden" name="purchaseId" value={purchase.id} />
+                          <input type="hidden" name="sort" value={sortMode} />
                           <Button variant="danger" type="submit">
                             Delete
                           </Button>
@@ -219,6 +220,7 @@ export default async function PurchasesPage({
                                     name="purchaseId"
                                     value={purchase.id}
                                   />
+                                  <input type="hidden" name="sort" value={sortMode} />
                                   <Button variant="danger" type="submit">
                                     Delete
                                   </Button>

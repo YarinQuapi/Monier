@@ -114,9 +114,12 @@ export async function updatePurchase(
 export async function deletePurchase(formData: FormData) {
   const session = await verifySession();
   const id = String(formData.get("purchaseId") ?? "");
+  const sort = String(formData.get("sort") ?? "").trim();
+  const returnTo =
+    sort === "date" ? "/purchases?sort=date" : "/purchases";
 
   if (id.length === 0) {
-    redirect("/purchases");
+    redirect(returnTo);
   }
 
   await prisma.purchase.deleteMany({
@@ -124,5 +127,5 @@ export async function deletePurchase(formData: FormData) {
   });
 
   revalidatePath("/purchases");
-  redirect("/purchases");
+  redirect(returnTo);
 }
