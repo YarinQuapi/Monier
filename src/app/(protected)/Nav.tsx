@@ -77,6 +77,18 @@ function TagIcon() {
   );
 }
 
+function MessageIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path
+        d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 const NAV_LINKS: { href: string; label: string; icon: ReactNode }[] = [
   { href: "/dashboard", label: "Dashboard", icon: <GridIcon /> },
   { href: "/income", label: "Income", icon: <TrendingUpIcon /> },
@@ -90,7 +102,15 @@ export function Nav({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
 
   const links = isAdmin
-    ? [...NAV_LINKS, { href: "/admin/categories", label: "Categories", icon: <TagIcon /> }]
+    ? [
+        ...NAV_LINKS,
+        { href: "/admin/categories", label: "Categories", icon: <TagIcon /> },
+        {
+          href: "/admin/quick-log-messages",
+          label: "Quick-log messages",
+          icon: <MessageIcon />,
+        },
+      ]
     : NAV_LINKS;
 
   return (

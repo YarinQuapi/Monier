@@ -2,14 +2,17 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { resolveApiToken } from "@/lib/apiToken";
+import {
+  formatQuickLogErrorMessage,
+  formatQuickLogSuccessMessage,
+} from "@/lib/appSettings";
 
 // Bearer-token-authenticated purchase logging for iOS Shortcuts.
 // Supports both:
 //   POST /api/quick-purchase  with JSON body
 //   GET  /api/quick-purchase?amount=12.5&category=Food&merchant=Cafe
-// Prefer GET from Shortcuts — CFNetwork + Apache often reject Shortcut POST
-// JSON bodies as HTTP 400 Bad Request, while GET works reliably (same as
-// /api/categories).
+// Responses always include a human-readable `message` field (admin-
+// customizable templates) so an iOS Shortcut notification can show it.
 
 function parsePurchaseDate(raw: unknown): Date | null {
   if (raw === undefined || raw === null || raw === "") {
@@ -51,24 +54,23 @@ function asAmount(value: unknown): number | null {
   return null;
 }
 
+async function errorResponse(error: string, status: number) {
+  const message = await formatQuickLogErrorMessage(error);
+  return NextResponse.json({ success: false, error, message }, { status });
+}
+
 async function createPurchaseFromFields(
   authHeader: string | null,
   fields: Record<string, unknown>
 ) {
   const token = await resolveApiToken(authHeader);
   if (!token) {
-    return NextResponse.json(
-      { error: "Missing or invalid bearer token." },
-      { status: 401 }
-    );
+    return errorResponse("Missing or invalid bearer token.", 401);
   }
 
   const amount = asAmount(fields.amount);
   if (amount === null || amount <= 0) {
-    return NextResponse.json(
-      { error: "`amount` must be a positive number." },
-      { status: 400 }
-    );
+    return errorResponse("`amount` must be a positive number.", 400);
   }
 
   let categoryId = asString(fields.categoryId);
@@ -79,10 +81,7 @@ async function createPurchaseFromFields(
       where: { name: { equals: categoryName } },
     });
     if (!byName) {
-      return NextResponse.json(
-        { error: `Unknown category name: ${categoryName}` },
-        { status: 400 }
-      );
+      return errorResponse(`Unknown category name: ${categoryName}`, 400);
     }
     categoryId = byName.id;
   }
@@ -92,18 +91,15 @@ async function createPurchaseFromFields(
   }
 
   if (!categoryId) {
-    return NextResponse.json(
-      {
-        error:
-          "No category provided. Send `category` (name) or `categoryId`, or set a default on the token.",
-      },
-      { status: 400 }
+    return errorResponse(
+      "No category provided. Send `category` (name) or `categoryId`, or set a default on the token.",
+      400
     );
   }
 
   const category = await prisma.category.findUnique({ where: { id: categoryId } });
   if (!category) {
-    return NextResponse.json({ error: "Unknown categoryId." }, { status: 400 });
+    return errorResponse("Unknown categoryId.", 400);
   }
 
   let paymentMethodId: string | null = null;
@@ -114,20 +110,14 @@ async function createPurchaseFromFields(
       where: { id: requestedPaymentMethodId, userId: token.userId },
     });
     if (!paymentMethod) {
-      return NextResponse.json(
-        { error: "Unknown paymentMethodId." },
-        { status: 400 }
-      );
+      return errorResponse("Unknown paymentMethodId.", 400);
     }
     paymentMethodId = paymentMethod.id;
   }
 
   const purchaseDate = parsePurchaseDate(fields.purchaseDate);
   if (!purchaseDate) {
-    return NextResponse.json(
-      { error: "`purchaseDate` must be a valid ISO date string." },
-      { status: 400 }
-    );
+    return errorResponse("`purchaseDate` must be a valid ISO date string.", 400);
   }
 
   const merchant = asString(fields.merchant);
@@ -146,12 +136,20 @@ async function createPurchaseFromFields(
     include: { category: true },
   });
 
+  const amountNumber = Number(purchase.amount);
+  const message = await formatQuickLogSuccessMessage({
+    amount: amountNumber,
+    category: purchase.category.name,
+    merchant: purchase.merchant,
+  });
+
   return NextResponse.json(
     {
       success: true,
+      message,
       purchase: {
         id: purchase.id,
-        amount: Number(purchase.amount),
+        amount: amountNumber,
         category: purchase.category.name,
         merchant: purchase.merchant,
         purchaseDate: purchase.purchaseDate.toISOString(),
@@ -200,17 +198,14 @@ export async function POST(request: Request) {
     } else {
       const parsed: unknown = await request.json();
       if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-        return NextResponse.json(
-          { error: "Request body must be a JSON object." },
-          { status: 400 }
-        );
+        return errorResponse("Request body must be a JSON object.", 400);
       }
       fields = parsed as Record<string, unknown>;
     }
   } catch {
-    return NextResponse.json(
-      { error: "Request body must be valid JSON (or use GET with query params)." },
-      { status: 400 }
+    return errorResponse(
+      "Request body must be valid JSON (or use GET with query params).",
+      400
     );
   }
 

@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import Link from "next/link";
 import { verifySession } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/Card";
@@ -61,6 +62,16 @@ export default async function ApiTokensPage() {
           <code>merchant</code>, <code>notes</code>, <code>purchaseDate</code>{" "}
           (ISO date). Do not use Shortcuts&apos; &quot;Filter Files&quot; to
           look up an id — send the chosen category <em>name</em> instead.
+        </p>
+        <p className={styles.helpText}>
+          A successful response includes a human-readable{" "}
+          <code>message</code> field (e.g.{" "}
+          <code>
+            {`{"success":true,"message":"Logged ₪45.90 at Cafe (Food).","purchase":{...}}`}
+          </code>
+          ). Point your Shortcut notification at that{" "}
+          <code>message</code> value. Admins can customize the wording under{" "}
+          <Link href="/admin/quick-log-messages">Quick-log messages</Link>.
         </p>
         <p className={styles.helpText}>
           To build a live category picker, first <code>GET</code>:
