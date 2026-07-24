@@ -7,6 +7,11 @@ import { resolveApiToken } from "@/lib/apiToken";
 // browser session cookie (an iOS Shortcut hitting this from the lock
 // screen/Action Button). See /settings/api-tokens for token issuance and
 // the request shape this expects.
+//
+// Shortcuts-friendly: accepts either `categoryId` or `category` (name).
+// Prefer `category` from a "Choose from List" of names — that avoids the
+// broken "Filter Files → Get id" pattern that turns the value into a File
+// object and causes Apache to reject the POST as a Bad Request.
 
 function parsePurchaseDate(raw: unknown): Date | null {
   if (raw === undefined || raw === null || raw === "") {
@@ -19,6 +24,36 @@ function parsePurchaseDate(raw: unknown): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+/** Coerce Shortcuts/JSON quirks: numbers-as-strings, single-item arrays, etc. */
+function asString(value: unknown): string | null {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+  if (Array.isArray(value) && value.length === 1) {
+    return asString(value[0]);
+  }
+  return null;
+}
+
+function asAmount(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const cleaned = value.replace(/[^\d.-]/g, "");
+    const amount = Number(cleaned);
+    return Number.isFinite(amount) ? amount : null;
+  }
+  if (Array.isArray(value) && value.length === 1) {
+    return asAmount(value[0]);
+  }
+  return null;
+}
+
 export async function POST(request: Request) {
   const token = await resolveApiToken(request.headers.get("authorization"));
   if (!token) {
@@ -28,9 +63,25 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: unknown;
+  const contentType = request.headers.get("content-type") ?? "";
+  let body: Record<string, unknown> = {};
+
   try {
-    body = await request.json();
+    if (contentType.includes("application/x-www-form-urlencoded")) {
+      const form = await request.formData();
+      for (const [key, value] of form.entries()) {
+        body[key] = typeof value === "string" ? value : value.name;
+      }
+    } else {
+      const parsed: unknown = await request.json();
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        return NextResponse.json(
+          { error: "Request body must be a JSON object." },
+          { status: 400 }
+        );
+      }
+      body = parsed as Record<string, unknown>;
+    }
   } catch {
     return NextResponse.json(
       { error: "Request body must be valid JSON." },
@@ -38,39 +89,40 @@ export async function POST(request: Request) {
     );
   }
 
-  if (typeof body !== "object" || body === null) {
-    return NextResponse.json(
-      { error: "Request body must be a JSON object." },
-      { status: 400 }
-    );
-  }
-
-  const {
-    amount: amountRaw,
-    categoryId: categoryIdRaw,
-    paymentMethodId: paymentMethodIdRaw,
-    merchant: merchantRaw,
-    notes: notesRaw,
-    purchaseDate: purchaseDateRaw,
-  } = body as Record<string, unknown>;
-
-  const amount = Number(amountRaw);
-  if (!Number.isFinite(amount) || amount <= 0) {
+  const amount = asAmount(body.amount);
+  if (amount === null || amount <= 0) {
     return NextResponse.json(
       { error: "`amount` must be a positive number." },
       { status: 400 }
     );
   }
 
-  const categoryId =
-    typeof categoryIdRaw === "string" && categoryIdRaw.length > 0
-      ? categoryIdRaw
-      : token.defaultCategoryId;
+  // Resolve category: explicit id, then name, then token default.
+  let categoryId = asString(body.categoryId);
+  const categoryName = asString(body.category) ?? asString(body.categoryName);
+
+  if (!categoryId && categoryName) {
+    const byName = await prisma.category.findFirst({
+      where: { name: { equals: categoryName } },
+    });
+    if (!byName) {
+      return NextResponse.json(
+        { error: `Unknown category name: ${categoryName}` },
+        { status: 400 }
+      );
+    }
+    categoryId = byName.id;
+  }
+
+  if (!categoryId) {
+    categoryId = token.defaultCategoryId;
+  }
+
   if (!categoryId) {
     return NextResponse.json(
       {
         error:
-          "No `categoryId` was provided and this token has no default category configured.",
+          "No category provided. Send `category` (name) or `categoryId`, or set a default on the token.",
       },
       { status: 400 }
     );
@@ -83,9 +135,7 @@ export async function POST(request: Request) {
 
   let paymentMethodId: string | null = null;
   const requestedPaymentMethodId =
-    typeof paymentMethodIdRaw === "string" && paymentMethodIdRaw.length > 0
-      ? paymentMethodIdRaw
-      : token.defaultPaymentMethodId;
+    asString(body.paymentMethodId) ?? token.defaultPaymentMethodId;
   if (requestedPaymentMethodId) {
     const paymentMethod = await prisma.paymentMethod.findFirst({
       where: { id: requestedPaymentMethodId, userId: token.userId },
@@ -99,7 +149,7 @@ export async function POST(request: Request) {
     paymentMethodId = paymentMethod.id;
   }
 
-  const purchaseDate = parsePurchaseDate(purchaseDateRaw);
+  const purchaseDate = parsePurchaseDate(body.purchaseDate);
   if (!purchaseDate) {
     return NextResponse.json(
       { error: "`purchaseDate` must be a valid ISO date string." },
@@ -107,19 +157,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const merchant =
-    typeof merchantRaw === "string" && merchantRaw.trim().length > 0
-      ? merchantRaw.trim()
-      : null;
-  const notes =
-    typeof notesRaw === "string" && notesRaw.trim().length > 0
-      ? notesRaw.trim()
-      : null;
+  const merchant = asString(body.merchant);
+  const notes = asString(body.notes);
 
   const purchase = await prisma.purchase.create({
     data: {
       userId: token.userId,
-      categoryId,
+      categoryId: category.id,
       paymentMethodId,
       amount: new Prisma.Decimal(amount.toFixed(2)),
       merchant,

@@ -54,23 +54,22 @@ export default async function ApiTokensPage() {
         <code className={styles.endpointBox}>{endpointUrl}</code>
         <p className={styles.helpText}>
           with header <code>Authorization: Bearer &lt;your token&gt;</code>{" "}
-          and a JSON body like <code>{"{\"amount\": 45.9}"}</code>. Optional
-          fields: <code>categoryId</code>, <code>paymentMethodId</code>,{" "}
+          and a JSON body like{" "}
+          <code>{"{\"amount\": 45.9, \"category\": \"Food\"}"}</code>. Optional
+          fields: <code>category</code> (name — preferred for Shortcuts),{" "}
+          <code>categoryId</code>, <code>paymentMethodId</code>,{" "}
           <code>merchant</code>, <code>notes</code>, <code>purchaseDate</code>{" "}
-          (ISO date) — any of these override the token&apos;s defaults for
-          that one request.
+          (ISO date). Do not use Shortcuts&apos; &quot;Filter Files&quot; to
+          look up an id — send the chosen category <em>name</em> instead.
         </p>
         <p className={styles.helpText}>
-          To let a Shortcut ask you which category to use each time (instead
-          of relying on the token&apos;s default), have it first{" "}
-          <code>GET</code>:
+          To build a live category picker, first <code>GET</code>:
         </p>
         <code className={styles.endpointBox}>{categoriesUrl}</code>
         <p className={styles.helpText}>
-          with the same <code>Authorization: Bearer</code> header. It returns{" "}
-          <code>{"{\"categories\": [{\"id\": \"...\", \"name\": \"...\"}]}"}</code>{" "}
-          — always current, no need to update the Shortcut when categories
-          change in the Admin panel.
+          with the same <code>Authorization: Bearer</code> header. Extract the{" "}
+          <code>name</code>s, <code>Choose from List</code>, then POST that
+          chosen name as <code>category</code> — no id lookup needed.
         </p>
       </Card>
 
