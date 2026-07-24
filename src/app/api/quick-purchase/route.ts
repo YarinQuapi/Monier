@@ -3,15 +3,13 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { resolveApiToken } from "@/lib/apiToken";
 
-// Bearer-token-authenticated purchase logging for clients that can't hold a
-// browser session cookie (an iOS Shortcut hitting this from the lock
-// screen/Action Button). See /settings/api-tokens for token issuance and
-// the request shape this expects.
-//
-// Shortcuts-friendly: accepts either `categoryId` or `category` (name).
-// Prefer `category` from a "Choose from List" of names — that avoids the
-// broken "Filter Files → Get id" pattern that turns the value into a File
-// object and causes Apache to reject the POST as a Bad Request.
+// Bearer-token-authenticated purchase logging for iOS Shortcuts.
+// Supports both:
+//   POST /api/quick-purchase  with JSON body
+//   GET  /api/quick-purchase?amount=12.5&category=Food&merchant=Cafe
+// Prefer GET from Shortcuts — CFNetwork + Apache often reject Shortcut POST
+// JSON bodies as HTTP 400 Bad Request, while GET works reliably (same as
+// /api/categories).
 
 function parsePurchaseDate(raw: unknown): Date | null {
   if (raw === undefined || raw === null || raw === "") {
@@ -24,7 +22,6 @@ function parsePurchaseDate(raw: unknown): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-/** Coerce Shortcuts/JSON quirks: numbers-as-strings, single-item arrays, etc. */
 function asString(value: unknown): string | null {
   if (typeof value === "string") {
     const trimmed = value.trim();
@@ -54,8 +51,11 @@ function asAmount(value: unknown): number | null {
   return null;
 }
 
-export async function POST(request: Request) {
-  const token = await resolveApiToken(request.headers.get("authorization"));
+async function createPurchaseFromFields(
+  authHeader: string | null,
+  fields: Record<string, unknown>
+) {
+  const token = await resolveApiToken(authHeader);
   if (!token) {
     return NextResponse.json(
       { error: "Missing or invalid bearer token." },
@@ -63,33 +63,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const contentType = request.headers.get("content-type") ?? "";
-  let body: Record<string, unknown> = {};
-
-  try {
-    if (contentType.includes("application/x-www-form-urlencoded")) {
-      const form = await request.formData();
-      for (const [key, value] of form.entries()) {
-        body[key] = typeof value === "string" ? value : value.name;
-      }
-    } else {
-      const parsed: unknown = await request.json();
-      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-        return NextResponse.json(
-          { error: "Request body must be a JSON object." },
-          { status: 400 }
-        );
-      }
-      body = parsed as Record<string, unknown>;
-    }
-  } catch {
-    return NextResponse.json(
-      { error: "Request body must be valid JSON." },
-      { status: 400 }
-    );
-  }
-
-  const amount = asAmount(body.amount);
+  const amount = asAmount(fields.amount);
   if (amount === null || amount <= 0) {
     return NextResponse.json(
       { error: "`amount` must be a positive number." },
@@ -97,9 +71,8 @@ export async function POST(request: Request) {
     );
   }
 
-  // Resolve category: explicit id, then name, then token default.
-  let categoryId = asString(body.categoryId);
-  const categoryName = asString(body.category) ?? asString(body.categoryName);
+  let categoryId = asString(fields.categoryId);
+  const categoryName = asString(fields.category) ?? asString(fields.categoryName);
 
   if (!categoryId && categoryName) {
     const byName = await prisma.category.findFirst({
@@ -135,7 +108,7 @@ export async function POST(request: Request) {
 
   let paymentMethodId: string | null = null;
   const requestedPaymentMethodId =
-    asString(body.paymentMethodId) ?? token.defaultPaymentMethodId;
+    asString(fields.paymentMethodId) ?? token.defaultPaymentMethodId;
   if (requestedPaymentMethodId) {
     const paymentMethod = await prisma.paymentMethod.findFirst({
       where: { id: requestedPaymentMethodId, userId: token.userId },
@@ -149,7 +122,7 @@ export async function POST(request: Request) {
     paymentMethodId = paymentMethod.id;
   }
 
-  const purchaseDate = parsePurchaseDate(body.purchaseDate);
+  const purchaseDate = parsePurchaseDate(fields.purchaseDate);
   if (!purchaseDate) {
     return NextResponse.json(
       { error: "`purchaseDate` must be a valid ISO date string." },
@@ -157,8 +130,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const merchant = asString(body.merchant);
-  const notes = asString(body.notes);
+  const merchant = asString(fields.merchant);
+  const notes = asString(fields.notes);
 
   const purchase = await prisma.purchase.create({
     data: {
@@ -186,4 +159,48 @@ export async function POST(request: Request) {
     },
     { status: 201 }
   );
+}
+
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const fields: Record<string, unknown> = {};
+  for (const [key, value] of url.searchParams.entries()) {
+    fields[key] = value;
+  }
+  return createPurchaseFromFields(request.headers.get("authorization"), fields);
+}
+
+export async function POST(request: Request) {
+  const contentType = request.headers.get("content-type") ?? "";
+  let fields: Record<string, unknown> = {};
+
+  try {
+    if (contentType.includes("application/x-www-form-urlencoded")) {
+      const form = await request.formData();
+      for (const [key, value] of form.entries()) {
+        fields[key] = typeof value === "string" ? value : value.name;
+      }
+    } else if (contentType.includes("multipart/form-data")) {
+      const form = await request.formData();
+      for (const [key, value] of form.entries()) {
+        fields[key] = typeof value === "string" ? value : value.name;
+      }
+    } else {
+      const parsed: unknown = await request.json();
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        return NextResponse.json(
+          { error: "Request body must be a JSON object." },
+          { status: 400 }
+        );
+      }
+      fields = parsed as Record<string, unknown>;
+    }
+  } catch {
+    return NextResponse.json(
+      { error: "Request body must be valid JSON (or use GET with query params)." },
+      { status: 400 }
+    );
+  }
+
+  return createPurchaseFromFields(request.headers.get("authorization"), fields);
 }
