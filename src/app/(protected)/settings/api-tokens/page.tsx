@@ -22,6 +22,7 @@ export default async function ApiTokensPage() {
   const requestHeaders = await headers();
   const host = requestHeaders.get("host") ?? "";
   const endpointUrl = host ? `https://${host}/api/quick-purchase` : "/api/quick-purchase";
+  const categoriesUrl = host ? `https://${host}/api/categories` : "/api/categories";
 
   const [tokens, categories, paymentMethods] = await Promise.all([
     prisma.apiToken.findMany({
@@ -58,6 +59,18 @@ export default async function ApiTokensPage() {
           <code>merchant</code>, <code>notes</code>, <code>purchaseDate</code>{" "}
           (ISO date) — any of these override the token&apos;s defaults for
           that one request.
+        </p>
+        <p className={styles.helpText}>
+          To let a Shortcut ask you which category to use each time (instead
+          of relying on the token&apos;s default), have it first{" "}
+          <code>GET</code>:
+        </p>
+        <code className={styles.endpointBox}>{categoriesUrl}</code>
+        <p className={styles.helpText}>
+          with the same <code>Authorization: Bearer</code> header. It returns{" "}
+          <code>{"{\"categories\": [{\"id\": \"...\", \"name\": \"...\"}]}"}</code>{" "}
+          — always current, no need to update the Shortcut when categories
+          change in the Admin panel.
         </p>
       </Card>
 
