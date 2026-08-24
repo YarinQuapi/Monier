@@ -51,6 +51,7 @@
 
 html {
   height: 100%;
+  -webkit-text-size-adjust: 100%;
 }
 
 html,
@@ -111,4 +112,81 @@ h3 {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-faint);
+}
+
+img,
+video,
+canvas {
+  max-width: 100%;
+}
+
+@media (max-width: 64rem) {
+  input,
+  select,
+  textarea,
+  button {
+    font-size: 16px;
+  }
+
+  input,
+  select,
+  textarea {
+    max-width: 100%;
+  }
+
+  table[data-stack] {
+    width: 100%;
+  }
+
+  table[data-stack] thead {
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    width: 1px;
+    white-space: nowrap;
+  }
+
+  table[data-stack] tbody tr {
+    display: grid;
+    gap: 0.3rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  table[data-stack] tbody tr:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  table[data-stack] tbody td {
+    display: grid;
+    grid-template-columns: minmax(6.25rem, 34%) 1fr;
+    gap: 0.5rem;
+    align-items: start;
+    padding: 0.2rem 0;
+    border-bottom: none;
+    background: transparent !important;
+    overflow-wrap: anywhere;
+  }
+
+  table[data-stack] tbody td::before {
+    content: attr(data-label);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--color-text-faint);
+    padding-top: 0.15rem;
+  }
+
+  table[data-stack] tbody td[data-label=""] {
+    grid-template-columns: 1fr;
+    padding-top: 0.55rem;
+  }
+
+  table[data-stack] tbody td[data-label=""]::before {
+    content: none;
+  }
 }

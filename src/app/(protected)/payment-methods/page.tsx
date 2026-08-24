@@ -50,7 +50,7 @@ export default async function PaymentMethodsPage({
         {paymentMethods.length === 0 ? (
           <EmptyState>No payment methods yet — add one below.</EmptyState>
         ) : (
-          <table className={styles.table}>
+          <table className={styles.table} data-stack>
             <thead>
               <tr>
                 <th>Nickname</th>
@@ -65,11 +65,11 @@ export default async function PaymentMethodsPage({
                   key={pm.id}
                   className={pm.isActive ? undefined : styles.inactive}
                 >
-                  <td className={styles.nicknameCell}>
+                  <td className={styles.nicknameCell} data-label="Nickname">
                     {pm.nickname}
                     {pm.institution ? ` (${pm.institution})` : ""}
                   </td>
-                  <td>
+                  <td data-label="Type">
                     <Badge
                       tone={
                         pm.type === "CREDIT_CARD"
@@ -86,12 +86,12 @@ export default async function PaymentMethodsPage({
                           : "Bank account"}
                     </Badge>
                   </td>
-                  <td className={styles.muted}>
+                  <td className={styles.muted} data-label="Billing (cards only)">
                     {pm.type === "CREDIT_CARD"
                       ? `Cycle starts ${pm.cycleStartDay} · due ${pm.paymentDueDay} (+${pm.dueMonthOffset}mo)`
                       : "—"}
                   </td>
-                  <td>
+                  <td data-label="">
                     <div className={styles.rowActions}>
                       <Link
                         className={styles.editLink}

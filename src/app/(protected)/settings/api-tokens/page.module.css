@@ -88,11 +88,13 @@
 
 .fieldRow {
   display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
 }
 
 .fieldRow .field {
-  flex: 1;
+  flex: 1 1 14rem;
+  min-width: 0;
 }
 
 .field {
@@ -171,4 +173,15 @@
   color: var(--color-text-muted);
   margin: 0;
   line-height: 1.6;
+}
+
+@media (max-width: 64rem) {
+  .submit {
+    width: 100%;
+    align-self: stretch;
+  }
+
+  .form {
+    max-width: 100%;
+  }
 }

@@ -24,6 +24,9 @@ export default async function ApiTokensPage() {
   const host = requestHeaders.get("host") ?? "";
   const endpointUrl = host ? `https://${host}/api/quick-purchase` : "/api/quick-purchase";
   const categoriesUrl = host ? `https://${host}/api/categories` : "/api/categories";
+  const paymentMethodsUrl = host
+    ? `https://${host}/api/payment-methods`
+    : "/api/payment-methods";
 
   const [tokens, categories, paymentMethods] = await Promise.all([
     prisma.apiToken.findMany({
@@ -56,18 +59,26 @@ export default async function ApiTokensPage() {
         <p className={styles.helpText}>
           with header <code>Authorization: Bearer &lt;your token&gt;</code>{" "}
           and a JSON body like{" "}
-          <code>{"{\"amount\": 45.9, \"category\": \"Food\"}"}</code>. Optional
-          fields: <code>category</code> (name — preferred for Shortcuts),{" "}
-          <code>categoryId</code>, <code>paymentMethodId</code>,{" "}
-          <code>merchant</code>, <code>notes</code>, <code>purchaseDate</code>{" "}
-          (ISO date). Do not use Shortcuts&apos; &quot;Filter Files&quot; to
-          look up an id — send the chosen category <em>name</em> instead.
+          <code>
+            {
+              '{"amount": 45.9, "category": "Food", "paymentMethod": "Visa Gold"}'
+            }
+          </code>
+          . Optional fields: <code>category</code> (name — preferred for
+          Shortcuts), <code>categoryId</code>, <code>paymentMethod</code>{" "}
+          (card nickname — preferred for Shortcuts),{" "}
+          <code>paymentMethodId</code>, <code>merchant</code>,{" "}
+          <code>notes</code>, <code>purchaseDate</code> (ISO date). Send{" "}
+          <code>paymentMethod: &quot;cash&quot;</code> to skip a card even if
+          the token has a default. Do not use Shortcuts&apos; &quot;Filter
+          Files&quot; to look up an id — send the chosen category or card{" "}
+          <em>name</em> instead.
         </p>
         <p className={styles.helpText}>
           A successful response includes a human-readable{" "}
           <code>message</code> field (e.g.{" "}
           <code>
-            {`{"success":true,"message":"Logged ₪45.90 at Cafe (Food).","purchase":{...}}`}
+            {`{"success":true,"message":"Logged ₪45.90 at Cafe (Food) on Visa Gold.","purchase":{...}}`}
           </code>
           ). Point your Shortcut notification at that{" "}
           <code>message</code> value. Admins can customize the wording under{" "}
@@ -78,9 +89,21 @@ export default async function ApiTokensPage() {
         </p>
         <code className={styles.endpointBox}>{categoriesUrl}</code>
         <p className={styles.helpText}>
-          with the same <code>Authorization: Bearer</code> header. Extract the{" "}
-          <code>name</code>s, <code>Choose from List</code>, then POST that
-          chosen name as <code>category</code> — no id lookup needed.
+          with the same <code>Authorization: Bearer</code> header. Get
+          Dictionary Value <code>names</code>, <code>Choose from List</code>,
+          then POST that chosen name as <code>category</code> — no id lookup
+          needed.
+        </p>
+        <p className={styles.helpText}>
+          To pick a card in the same Shortcut, first <code>GET</code>:
+        </p>
+        <code className={styles.endpointBox}>{paymentMethodsUrl}</code>
+        <p className={styles.helpText}>
+          with the same Bearer header. Get Dictionary Value{" "}
+          <code>names</code>, <code>Choose from List</code>, then POST that
+          chosen nickname as <code>paymentMethod</code> — no id lookup needed.
+          The list is your active payment methods (same nicknames as the
+          Payment Methods page).
         </p>
       </Card>
 
@@ -90,7 +113,7 @@ export default async function ApiTokensPage() {
         {tokens.length === 0 ? (
           <EmptyState>No tokens yet — create one below.</EmptyState>
         ) : (
-          <table className={styles.table}>
+          <table className={styles.table} data-stack>
             <thead>
               <tr>
                 <th>Name</th>
@@ -104,20 +127,20 @@ export default async function ApiTokensPage() {
             <tbody>
               {tokens.map((token) => (
                 <tr key={token.id}>
-                  <td className={styles.nicknameCell}>{token.name}</td>
-                  <td className={styles.muted}>
+                  <td className={styles.nicknameCell} data-label="Name">{token.name}</td>
+                  <td className={styles.muted} data-label="Token">
                     <code>{token.tokenPrefix}&hellip;</code>
                   </td>
-                  <td className={styles.muted}>
+                  <td className={styles.muted} data-label="Default category">
                     {token.defaultCategory?.name ?? "—"}
                   </td>
-                  <td className={styles.muted}>
+                  <td className={styles.muted} data-label="Default payment method">
                     {token.defaultPaymentMethod?.nickname ?? "—"}
                   </td>
-                  <td className={styles.muted}>
+                  <td className={styles.muted} data-label="Last used">
                     {formatDateTime(token.lastUsedAt)}
                   </td>
-                  <td>
+                  <td data-label="">
                     <form action={revokeApiToken}>
                       <input type="hidden" name="tokenId" value={token.id} />
                       <Button variant="danger" type="submit">

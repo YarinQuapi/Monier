@@ -101,12 +101,24 @@ export async function createPaymentMethod(
     return { error: parsed.error };
   }
 
-  await prisma.paymentMethod.create({
-    data: {
-      ...parsed.data,
-      userId: session.user.id,
-    },
-  });
+  try {
+    await prisma.paymentMethod.create({
+      data: {
+        ...parsed.data,
+        userId: session.user.id,
+      },
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2003"
+    ) {
+      return {
+        error: "Your session is out of date. Sign out, sign in, and try again.",
+      };
+    }
+    throw error;
+  }
 
   revalidatePath("/payment-methods");
   redirect("/payment-methods");

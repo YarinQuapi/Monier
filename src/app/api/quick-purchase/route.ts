@@ -10,9 +10,17 @@ import {
 // Bearer-token-authenticated purchase logging for iOS Shortcuts.
 // Supports both:
 //   POST /api/quick-purchase  with JSON body
-//   GET  /api/quick-purchase?amount=12.5&category=Food&merchant=Cafe
+//   GET  /api/quick-purchase?amount=12.5&category=Food&paymentMethod=Visa&merchant=Cafe
 // Responses always include a human-readable `message` field (admin-
 // customizable templates) so an iOS Shortcut notification can show it.
+
+const CASH_PAYMENT_METHOD_NAMES = new Set([
+  "cash",
+  "none",
+  "cash / none",
+  "none / cash",
+  "none/cash",
+]);
 
 function parsePurchaseDate(raw: unknown): Date | null {
   if (raw === undefined || raw === null || raw === "") {
@@ -102,18 +110,15 @@ async function createPurchaseFromFields(
     return errorResponse("Unknown categoryId.", 400);
   }
 
-  let paymentMethodId: string | null = null;
-  const requestedPaymentMethodId =
-    asString(fields.paymentMethodId) ?? token.defaultPaymentMethodId;
-  if (requestedPaymentMethodId) {
-    const paymentMethod = await prisma.paymentMethod.findFirst({
-      where: { id: requestedPaymentMethodId, userId: token.userId },
-    });
-    if (!paymentMethod) {
-      return errorResponse("Unknown paymentMethodId.", 400);
-    }
-    paymentMethodId = paymentMethod.id;
+  const paymentMethodResult = await resolvePaymentMethod(
+    token.userId,
+    fields,
+    token.defaultPaymentMethodId
+  );
+  if ("error" in paymentMethodResult) {
+    return errorResponse(paymentMethodResult.error, 400);
   }
+  const paymentMethodId = paymentMethodResult.paymentMethodId;
 
   const purchaseDate = parsePurchaseDate(fields.purchaseDate);
   if (!purchaseDate) {
@@ -133,7 +138,7 @@ async function createPurchaseFromFields(
       purchaseDate,
       notes,
     },
-    include: { category: true },
+    include: { category: true, paymentMethod: true },
   });
 
   const amountNumber = Number(purchase.amount);
@@ -141,6 +146,7 @@ async function createPurchaseFromFields(
     amount: amountNumber,
     category: purchase.category.name,
     merchant: purchase.merchant,
+    paymentMethod: purchase.paymentMethod?.nickname ?? null,
   });
 
   return NextResponse.json(
@@ -152,11 +158,71 @@ async function createPurchaseFromFields(
         amount: amountNumber,
         category: purchase.category.name,
         merchant: purchase.merchant,
+        paymentMethod: purchase.paymentMethod?.nickname ?? null,
         purchaseDate: purchase.purchaseDate.toISOString(),
       },
     },
     { status: 201 }
   );
+}
+
+async function resolvePaymentMethod(
+  userId: string,
+  fields: Record<string, unknown>,
+  defaultPaymentMethodId: string | null
+): Promise<{ paymentMethodId: string | null } | { error: string }> {
+  const requestedPaymentMethodId = asString(fields.paymentMethodId);
+  const paymentMethodName =
+    asString(fields.paymentMethod) ??
+    asString(fields.paymentMethodName) ??
+    asString(fields.card);
+
+  if (requestedPaymentMethodId) {
+    const paymentMethod = await prisma.paymentMethod.findFirst({
+      where: { id: requestedPaymentMethodId, userId },
+    });
+    if (!paymentMethod) {
+      return { error: "Unknown paymentMethodId." };
+    }
+    return { paymentMethodId: paymentMethod.id };
+  }
+
+  if (paymentMethodName) {
+    if (CASH_PAYMENT_METHOD_NAMES.has(paymentMethodName.toLowerCase())) {
+      return { paymentMethodId: null };
+    }
+
+    const matches = await prisma.paymentMethod.findMany({
+      where: { userId, isActive: true },
+      select: { id: true, nickname: true },
+    });
+    const needle = paymentMethodName.toLowerCase();
+    const matched = matches.filter(
+      (method) => method.nickname.trim().toLowerCase() === needle
+    );
+
+    if (matched.length === 0) {
+      return { error: `Unknown payment method: ${paymentMethodName}` };
+    }
+    if (matched.length > 1) {
+      return {
+        error: `Multiple payment methods named "${paymentMethodName}". Give each card a unique nickname, or send paymentMethodId.`,
+      };
+    }
+    return { paymentMethodId: matched[0].id };
+  }
+
+  if (!defaultPaymentMethodId) {
+    return { paymentMethodId: null };
+  }
+
+  const paymentMethod = await prisma.paymentMethod.findFirst({
+    where: { id: defaultPaymentMethodId, userId },
+  });
+  if (!paymentMethod) {
+    return { error: "Unknown paymentMethodId." };
+  }
+  return { paymentMethodId: paymentMethod.id };
 }
 
 export async function GET(request: Request) {

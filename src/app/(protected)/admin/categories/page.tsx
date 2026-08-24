@@ -43,7 +43,7 @@ export default async function AdminCategoriesPage({
         {categories.length === 0 ? (
           <EmptyState>No categories yet — add the first one below.</EmptyState>
         ) : (
-          <table className={styles.table}>
+          <table className={styles.table} data-stack>
             <thead>
               <tr>
                 <th>Name</th>
@@ -54,7 +54,7 @@ export default async function AdminCategoriesPage({
             <tbody>
               {categories.map((category) => (
                 <tr key={category.id}>
-                  <td>
+                  <td data-label="Name">
                     <span className={styles.nameCell}>
                       {category.color && (
                         <span
@@ -66,8 +66,8 @@ export default async function AdminCategoriesPage({
                       {category.name}
                     </span>
                   </td>
-                  <td className={styles.muted}>{category.description ?? "—"}</td>
-                  <td>
+                  <td className={styles.muted} data-label="Description">{category.description ?? "—"}</td>
+                  <td data-label="">
                     <div className={styles.rowActions}>
                       <Link
                         className={styles.editLink}

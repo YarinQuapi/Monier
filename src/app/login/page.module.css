@@ -104,3 +104,26 @@
   font-size: 0.82rem;
   margin: 0;
 }
+
+@media (max-width: 64rem) {
+  .container {
+    padding: calc(1.25rem + env(safe-area-inset-top))
+      calc(1rem + env(safe-area-inset-right))
+      calc(1.25rem + env(safe-area-inset-bottom))
+      calc(1rem + env(safe-area-inset-left));
+    align-items: flex-start;
+  }
+
+  .card {
+    padding: 1.5rem 1.15rem;
+    box-shadow: var(--shadow-md);
+  }
+
+  .title {
+    font-size: 1.25rem;
+  }
+
+  .submit {
+    min-height: 44px;
+  }
+}

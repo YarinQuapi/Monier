@@ -59,3 +59,11 @@
   background: var(--color-surface-muted);
   color: var(--color-text);
 }
+
+@media (max-width: 64rem) {
+  .button {
+    min-height: 44px;
+    white-space: normal;
+    text-align: center;
+  }
+}

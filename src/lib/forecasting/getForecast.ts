@@ -6,6 +6,7 @@ import {
   computeEomForecast,
   endOfUTCMonth,
   roundCurrency,
+  splitForecastBySettlement,
   startOfUTCMonth,
 } from "./index";
 import type {
@@ -15,6 +16,7 @@ import type {
   IncomeSummary,
   PaymentMethodInput,
   PurchaseInput,
+  SettledForecastSplit,
   SubscriptionInput,
 } from "./types";
 
@@ -58,6 +60,8 @@ async function loadForecastInputsForUser(userId: string): Promise<{
   const subscriptionInputs: SubscriptionInput[] = subscriptions.map((sub) => ({
     id: sub.id,
     paymentMethodId: sub.paymentMethodId,
+    providerName: sub.providerName,
+    accountLabel: sub.accountLabel,
     amount: Number(sub.amount),
     billingType: sub.billingType,
     billingDayOfMonth: sub.billingDayOfMonth,
@@ -195,6 +199,9 @@ export async function getCashFlowSummaryForUser(
 export interface DashboardSummary {
   cashFlow: CashFlowSummary;
   debt: DebtSummary;
+  /** Charges still needing cash vs already past their due date, as of `asOf`. */
+  monthCharges: SettledForecastSplit;
+  asOf: Date;
 }
 
 /**
@@ -215,13 +222,17 @@ export async function getDashboardSummaryForUser(
       getCumulativeIncomeForUser(userId, referenceDate),
     ]);
 
+  const asOf = new Date();
   const forecast = computeEomForecast(
     paymentMethodInputs,
     purchaseInputs,
     subscriptionInputs,
     referenceDate
   );
-  const debt = computeDebtSummary(paymentMethodInputs, purchaseInputs, subscriptionInputs);
+  const debt = computeDebtSummary(paymentMethodInputs, purchaseInputs, subscriptionInputs, {
+    asOfDate: asOf,
+  });
+  const monthCharges = splitForecastBySettlement(forecast, asOf);
   const cumulativeExpenses = computeCumulativeExpenses(
     paymentMethodInputs,
     purchaseInputs,
@@ -237,5 +248,7 @@ export async function getDashboardSummaryForUser(
       balance: roundCurrency(cumulativeIncome - cumulativeExpenses),
     },
     debt,
+    monthCharges,
+    asOf,
   };
 }

@@ -2,12 +2,19 @@ import Link from "next/link";
 import { verifySession } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { getDashboardSummaryForUser } from "@/lib/forecasting/getForecast";
+import { endOfUTCMonth, startOfUTCDay } from "@/lib/forecasting";
 import { formatCurrency } from "@/lib/currency";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
+import {
+  ChronologicalChargeList,
+  formatDate,
+  PaymentMethodChargeList,
+} from "./ChargeLists";
+import { countDisplayItems } from "@/lib/forecasting/chargeDisplay";
 import styles from "./page.module.css";
 
 function parseMonthParam(month: string | undefined): Date {
@@ -31,31 +38,44 @@ function formatMonthLabel(date: Date): string {
   });
 }
 
-function formatDate(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
+type ChargeView = "due" | "history";
+type HistoryLayout = "method" | "charges";
 
-function formatPaymentMethodType(type: "CREDIT_CARD" | "DEBIT_CARD" | "BANK_ACCOUNT" | undefined): string {
-  if (type === "CREDIT_CARD") return "Credit card";
-  if (type === "DEBIT_CARD") return "Debit card";
-  return "Bank account";
+function dashboardHref({
+  month,
+  view,
+  method,
+  layout,
+}: {
+  month: string;
+  view: ChargeView;
+  method?: string;
+  layout?: HistoryLayout;
+}): string {
+  const params = new URLSearchParams();
+  params.set("month", month);
+  params.set("view", view);
+  if (method) params.set("method", method);
+  if (view === "history" && layout === "charges") params.set("layout", "charges");
+  return `/dashboard?${params.toString()}`;
 }
 
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string }>;
+  searchParams: Promise<{ month?: string; view?: string; method?: string; layout?: string }>;
 }) {
   const session = await verifySession();
-  const { month } = await searchParams;
+  const { month, view: viewParam, method: methodParam, layout: layoutParam } =
+    await searchParams;
   const referenceDate = parseMonthParam(month);
 
   const [summary, paymentMethods] = await Promise.all([
     getDashboardSummaryForUser(session.user.id, referenceDate),
     prisma.paymentMethod.findMany({ where: { userId: session.user.id } }),
   ]);
-  const { cashFlow, debt } = summary;
-  const { forecast, income, balance } = cashFlow;
+  const { cashFlow, debt, monthCharges, asOf } = summary;
+  const { income, balance } = cashFlow;
 
   const paymentMethodsById = new Map(paymentMethods.map((pm) => [pm.id, pm]));
 
@@ -69,6 +89,64 @@ export default async function DashboardPage({
     Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)
   );
   const isCurrentMonth = referenceDate.getTime() === currentMonth.getTime();
+  const isPastMonth =
+    endOfUTCMonth(referenceDate).getTime() < startOfUTCDay(asOf).getTime();
+
+  const view: ChargeView =
+    viewParam === "history" || viewParam === "due"
+      ? viewParam
+      : isPastMonth
+        ? "history"
+        : "due";
+  const layout: HistoryLayout = layoutParam === "charges" ? "charges" : "method";
+
+  const methodIds = new Set(
+    [...monthCharges.remaining, ...monthCharges.settled].map(
+      (item) => item.paymentMethodId
+    )
+  );
+  const methodFilter =
+    methodParam && methodIds.has(methodParam) ? methodParam : undefined;
+
+  const sourceItems = view === "history" ? monthCharges.settled : monthCharges.remaining;
+  const visibleItems = methodFilter
+    ? sourceItems.filter((item) => item.paymentMethodId === methodFilter)
+    : sourceItems;
+
+  const remainingChargeCount = monthCharges.remaining.reduce(
+    (sum, item) => sum + countDisplayItems(item.charges),
+    0
+  );
+  const settledChargeCount = monthCharges.settled.reduce(
+    (sum, item) => sum + countDisplayItems(item.charges),
+    0
+  );
+
+  const monthKey = formatMonthParam(referenceDate);
+  const hrefFor = (
+    next: Partial<{ view: ChargeView; method: string | undefined; layout: HistoryLayout; month: string }>
+  ) =>
+    dashboardHref({
+      month: next.month ?? monthKey,
+      view: next.view ?? view,
+      method: "method" in next ? next.method : methodFilter,
+      layout: next.layout ?? layout,
+    });
+
+  const cashNeededLabel = isPastMonth ? "Paid" : "Cash needed";
+  const cashNeededValue = isPastMonth
+    ? monthCharges.settledTotal
+    : monthCharges.remainingTotal;
+  const cashNeededSubtext = isPastMonth
+    ? `across ${monthCharges.settled.length} payment method${monthCharges.settled.length === 1 ? "" : "s"}`
+    : remainingChargeCount === 0
+      ? "nothing left to pay this month"
+      : `still due across ${monthCharges.remaining.length} payment method${monthCharges.remaining.length === 1 ? "" : "s"}`;
+
+  const filterMethods = [...methodIds]
+    .map((id) => paymentMethodsById.get(id))
+    .filter((pm): pm is NonNullable<typeof pm> => Boolean(pm))
+    .sort((a, b) => a.nickname.localeCompare(b.nickname));
 
   return (
     <div className={styles.wrapper}>
@@ -101,48 +179,13 @@ export default async function DashboardPage({
             </div>
 
             {debt.lineItems.length > 0 && (
-              <div className={styles.lineList}>
-                <div className={styles.lineListHeader}>
-                  <span>Payment method</span>
-                  <span>Outstanding</span>
-                  <span>Owed charges</span>
-                </div>
-                {debt.lineItems.map((item) => {
-                  const paymentMethod = paymentMethodsById.get(item.paymentMethodId);
-                  return (
-                    <details key={item.paymentMethodId} className={styles.lineItem}>
-                      <summary className={styles.lineItemSummary}>
-                        <span className={styles.methodCell}>
-                          <span className={styles.methodName}>
-                            {paymentMethod?.nickname ?? "Unknown payment method"}
-                          </span>
-                          <Badge tone="neutral">
-                            {formatPaymentMethodType(paymentMethod?.type)}
-                          </Badge>
-                        </span>
-                        <span className={styles.amount}>{formatCurrency(item.amountDue)}</span>
-                        <span className={styles.chargeToggle}>
-                          {item.charges.length} charge{item.charges.length === 1 ? "" : "s"}
-                        </span>
-                      </summary>
-                      <ul className={styles.chargeList}>
-                        {item.charges.map((charge) => (
-                          <li
-                            key={`${charge.source}-${charge.sourceId}-${charge.chargeDate.toISOString()}`}
-                          >
-                            <Badge tone={charge.source === "SUBSCRIPTION" ? "primary" : "neutral"}>
-                              {charge.source === "SUBSCRIPTION" ? "Subscription" : "Purchase"}
-                            </Badge>{" "}
-                            {formatCurrency(charge.amount)} charged{" "}
-                            {formatDate(charge.chargeDate)} — paid off{" "}
-                            {formatDate(charge.cashOutflowDate)}
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
-                  );
-                })}
-              </div>
+              <PaymentMethodChargeList
+                lineItems={debt.lineItems}
+                paymentMethodsById={paymentMethodsById}
+                mode="debt"
+                amountHeader="Outstanding"
+                chargeCountLabel="Owed charges"
+              />
             )}
           </div>
         </Card>
@@ -150,10 +193,7 @@ export default async function DashboardPage({
         <Card className={styles.gridCard}>
           <div className={styles.cardScroll}>
             <div className={styles.monthNav}>
-              <Link
-                href={`/dashboard?month=${formatMonthParam(prevMonth)}`}
-                className={styles.navLink}
-              >
+              <Link href={hrefFor({ month: formatMonthParam(prevMonth) })} className={styles.navLink}>
                 &larr; Prev
               </Link>
               <div className={styles.monthNavTitle}>
@@ -163,10 +203,7 @@ export default async function DashboardPage({
                   {isCurrentMonth ? " (current)" : ""}
                 </span>
               </div>
-              <Link
-                href={`/dashboard?month=${formatMonthParam(nextMonth)}`}
-                className={styles.navLink}
-              >
+              <Link href={hrefFor({ month: formatMonthParam(nextMonth) })} className={styles.navLink}>
                 Next &rarr;
               </Link>
             </div>
@@ -178,9 +215,9 @@ export default async function DashboardPage({
                 subtext={`${income.entries.length} entr${income.entries.length === 1 ? "y" : "ies"}`}
               />
               <StatCard
-                label="Cash needed"
-                value={formatCurrency(forecast.total)}
-                subtext={`across ${forecast.lineItems.length} payment method${forecast.lineItems.length === 1 ? "" : "s"}`}
+                label={cashNeededLabel}
+                value={formatCurrency(cashNeededValue)}
+                subtext={cashNeededSubtext}
               />
               <StatCard
                 label="Balance"
@@ -212,59 +249,102 @@ export default async function DashboardPage({
             )}
 
             <div className={styles.subsection}>
-              <h3>Cash needed by payment method</h3>
-
-              {forecast.lineItems.length === 0 ? (
-                <EmptyState>
-                  No charges are projected to hit your accounts this month.
-                </EmptyState>
-              ) : (
-                <div className={styles.lineList}>
-                  <div className={styles.lineListHeader}>
-                    <span>Payment method</span>
-                    <span>Amount due</span>
-                    <span>Charges</span>
-                  </div>
-                  {forecast.lineItems.map((item) => {
-                    const paymentMethod = paymentMethodsById.get(item.paymentMethodId);
-                    return (
-                      <details key={item.paymentMethodId} className={styles.lineItem}>
-                        <summary className={styles.lineItemSummary}>
-                          <span className={styles.methodCell}>
-                            <span className={styles.methodName}>
-                              {paymentMethod?.nickname ?? "Unknown payment method"}
-                            </span>
-                            <Badge tone="neutral">
-                              {formatPaymentMethodType(paymentMethod?.type)}
-                            </Badge>
-                          </span>
-                          <span className={styles.amount}>
-                            {formatCurrency(item.amountDue)}
-                          </span>
-                          <span className={styles.chargeToggle}>
-                            {item.charges.length} charge{item.charges.length === 1 ? "" : "s"}
-                          </span>
-                        </summary>
-                        <ul className={styles.chargeList}>
-                          {item.charges.map((charge) => (
-                            <li
-                              key={`${charge.source}-${charge.sourceId}-${charge.chargeDate.toISOString()}`}
-                            >
-                              <Badge tone={charge.source === "SUBSCRIPTION" ? "primary" : "neutral"}>
-                                {charge.source === "SUBSCRIPTION" ? "Subscription" : "Purchase"}
-                              </Badge>{" "}
-                              {formatCurrency(charge.amount)} charged{" "}
-                              {formatDate(charge.chargeDate)}
-                              {paymentMethod?.type === "CREDIT_CARD"
-                                ? ` — due ${formatDate(charge.cashOutflowDate)}`
-                                : ""}
-                            </li>
-                          ))}
-                        </ul>
-                      </details>
-                    );
-                  })}
+              <div className={styles.subsectionHeader}>
+                <h3>{view === "history" ? "Paid this month" : "Cash needed by payment method"}</h3>
+                <div className={styles.viewToggle}>
+                  <Link
+                    href={hrefFor({ view: "due" })}
+                    className={`${styles.viewToggleLink} ${view === "due" ? styles.viewToggleLinkActive : ""}`}
+                  >
+                    Still due
+                    {remainingChargeCount > 0 ? ` · ${remainingChargeCount}` : ""}
+                  </Link>
+                  <Link
+                    href={hrefFor({ view: "history" })}
+                    className={`${styles.viewToggleLink} ${view === "history" ? styles.viewToggleLinkActive : ""}`}
+                  >
+                    History
+                    {settledChargeCount > 0 ? ` · ${settledChargeCount}` : ""}
+                  </Link>
                 </div>
+              </div>
+
+              <p className={styles.sectionHint}>
+                {view === "history"
+                  ? "Charges whose due date has already passed. Browse other months with the arrows above."
+                  : "Only charges that still need cash. After the due date they move to History."}
+              </p>
+
+              {view === "history" && (
+                <div className={styles.viewToggle}>
+                  <Link
+                    href={hrefFor({ view: "history", layout: "method" })}
+                    className={`${styles.viewToggleLink} ${layout === "method" ? styles.viewToggleLinkActive : ""}`}
+                  >
+                    By payment method
+                  </Link>
+                  <Link
+                    href={hrefFor({ view: "history", layout: "charges" })}
+                    className={`${styles.viewToggleLink} ${layout === "charges" ? styles.viewToggleLinkActive : ""}`}
+                  >
+                    All charges
+                  </Link>
+                </div>
+              )}
+
+              {filterMethods.length > 1 && (
+                <div className={styles.filterRow}>
+                  <Link
+                    href={hrefFor({ method: undefined })}
+                    className={`${styles.filterChip} ${!methodFilter ? styles.filterChipActive : ""}`}
+                  >
+                    All methods
+                  </Link>
+                  {filterMethods.map((pm) => (
+                    <Link
+                      key={pm.id}
+                      href={hrefFor({ method: pm.id })}
+                      className={`${styles.filterChip} ${methodFilter === pm.id ? styles.filterChipActive : ""}`}
+                    >
+                      {pm.nickname}
+                    </Link>
+                  ))}
+                </div>
+              )}
+
+              {visibleItems.length === 0 ? (
+                <EmptyState>
+                  {view === "history" ? (
+                    settledChargeCount === 0 ? (
+                      "No paid charges this month."
+                    ) : (
+                      "No paid charges for this payment method."
+                    )
+                  ) : remainingChargeCount === 0 && settledChargeCount > 0 ? (
+                    <>
+                      Nothing left to pay this month.{" "}
+                      <Link href={hrefFor({ view: "history" })}>View history</Link>
+                    </>
+                  ) : remainingChargeCount === 0 ? (
+                    "No charges are projected to hit your accounts this month."
+                  ) : (
+                    "No remaining charges for this payment method."
+                  )}
+                </EmptyState>
+              ) : view === "history" && layout === "charges" ? (
+                <ChronologicalChargeList
+                  lineItems={visibleItems}
+                  paymentMethodsById={paymentMethodsById}
+                  mode="paid"
+                />
+              ) : (
+                <PaymentMethodChargeList
+                  lineItems={visibleItems}
+                  paymentMethodsById={paymentMethodsById}
+                  mode={view === "history" ? "paid" : "due"}
+                  amountHeader={view === "history" ? "Amount paid" : "Amount due"}
+                  openAll={Boolean(methodFilter)}
+                />
               )}
             </div>
           </div>

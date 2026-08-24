@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -16,6 +16,13 @@ export const metadata: Metadata = {
   title: "Money Management",
   description:
     "Track income, purchases, subscriptions, and forecast end-of-month cash requirements.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#f6f7fb",
 };
 
 export default function RootLayout({

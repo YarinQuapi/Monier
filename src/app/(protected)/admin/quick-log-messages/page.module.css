@@ -126,6 +126,16 @@
   flex-wrap: wrap;
 }
 
+@media (max-width: 64rem) {
+  .form {
+    max-width: 100%;
+  }
+
+  .actions > * {
+    flex: 1 1 auto;
+  }
+}
+
 .error {
   color: var(--color-danger);
   background: var(--color-danger-soft);

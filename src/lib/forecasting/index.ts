@@ -6,7 +6,9 @@ import type {
   PaymentMethodInput,
   PurchaseInput,
   ResolvedCharge,
+  SettledForecastSplit,
   SubscriptionInput,
+  SubscriptionOccurrence,
 } from "./types";
 
 export type {
@@ -19,8 +21,10 @@ export type {
   PaymentMethodKind,
   PurchaseInput,
   ResolvedCharge,
+  SettledForecastSplit,
   SubscriptionBillingKind,
   SubscriptionInput,
+  SubscriptionOccurrence,
 } from "./types";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -49,6 +53,11 @@ function dateAtDayOfMonth(absoluteMonthIndex: number, day: number): Date {
   const lastDayOfMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
   const clampedDay = Math.min(Math.max(day, 1), lastDayOfMonth);
   return new Date(Date.UTC(year, month, clampedDay));
+}
+
+/** Start of the UTC calendar day containing `date` (00:00:00.000). */
+export function startOfUTCDay(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
 
 /** Start of the UTC calendar month containing `date` (day 1, 00:00:00.000). */
@@ -154,12 +163,12 @@ export function expandSubscriptionOccurrences(
   subscription: SubscriptionInput,
   windowStart: Date,
   windowEnd: Date
-): Date[] {
+): SubscriptionOccurrence[] {
   if (!subscription.isActive) {
     return [];
   }
 
-  const occurrences: Date[] = [];
+  const occurrences: SubscriptionOccurrence[] = [];
   const startMonth = absoluteMonth(subscription.startDate);
   const maxOccurrences =
     subscription.billingType === "FIXED_TERM"
@@ -187,11 +196,34 @@ export function expandSubscriptionOccurrences(
     }
 
     if (occurrenceDate >= windowStart) {
-      occurrences.push(occurrenceDate);
+      occurrences.push({ date: occurrenceDate, installmentNumber: i + 1 });
     }
   }
 
   return occurrences;
+}
+
+function resolveSubscriptionCharge(
+  subscription: SubscriptionInput,
+  occurrence: SubscriptionOccurrence,
+  paymentMethod: PaymentMethodInput
+): ResolvedCharge {
+  return {
+    source: "SUBSCRIPTION",
+    sourceId: subscription.id,
+    paymentMethodId: subscription.paymentMethodId,
+    amount: subscription.amount,
+    chargeDate: occurrence.date,
+    cashOutflowDate: resolveCashOutflowDate(paymentMethod, occurrence.date),
+    subscriptionProviderName: subscription.providerName,
+    subscriptionAccountLabel: subscription.accountLabel,
+    subscriptionBillingType: subscription.billingType,
+    installmentNumber: occurrence.installmentNumber,
+    totalInstallments:
+      subscription.billingType === "FIXED_TERM"
+        ? subscription.totalMonths ?? undefined
+        : undefined,
+  };
 }
 
 /** Groups resolved charges by payment method, summing amounts (rounded to
@@ -216,6 +248,65 @@ function groupChargesByPaymentMethod(charges: ResolvedCharge[]): EomForecastLine
   return Array.from(lineItemsByPaymentMethod.values()).sort(
     (a, b) => b.amountDue - a.amountDue
   );
+}
+
+function sortChargesByDueDate(
+  charges: ResolvedCharge[],
+  direction: "asc" | "desc"
+): ResolvedCharge[] {
+  const sign = direction === "asc" ? 1 : -1;
+  return [...charges].sort((a, b) => {
+    const byDue = a.cashOutflowDate.getTime() - b.cashOutflowDate.getTime();
+    if (byDue !== 0) return sign * byDue;
+    return sign * (a.chargeDate.getTime() - b.chargeDate.getTime());
+  });
+}
+
+/**
+ * A charge is settled once its cash-outflow (due) date's calendar day is
+ * strictly before `asOfDate`. The due day itself still counts as cash needed.
+ */
+export function isChargeSettled(charge: ResolvedCharge, asOfDate: Date): boolean {
+  return startOfUTCDay(charge.cashOutflowDate).getTime() < startOfUTCDay(asOfDate).getTime();
+}
+
+/**
+ * Splits a month forecast into charges that still need cash vs charges whose
+ * due date has already passed. Totals/line items on the original forecast are
+ * left intact so monthly accounting (balance, full-month outflow) is unchanged.
+ */
+export function splitForecastBySettlement(
+  forecast: EomForecastResult,
+  asOfDate: Date
+): SettledForecastSplit {
+  const remainingCharges: ResolvedCharge[] = [];
+  const settledCharges: ResolvedCharge[] = [];
+
+  for (const item of forecast.lineItems) {
+    for (const charge of item.charges) {
+      if (isChargeSettled(charge, asOfDate)) {
+        settledCharges.push(charge);
+      } else {
+        remainingCharges.push(charge);
+      }
+    }
+  }
+
+  const remaining = groupChargesByPaymentMethod(remainingCharges).map((item) => ({
+    ...item,
+    charges: sortChargesByDueDate(item.charges, "asc"),
+  }));
+  const settled = groupChargesByPaymentMethod(settledCharges).map((item) => ({
+    ...item,
+    charges: sortChargesByDueDate(item.charges, "desc"),
+  }));
+
+  return {
+    remaining,
+    remainingTotal: roundCurrency(remaining.reduce((sum, item) => sum + item.amountDue, 0)),
+    settled,
+    settledTotal: roundCurrency(settled.reduce((sum, item) => sum + item.amountDue, 0)),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -289,15 +380,10 @@ export function computeEomForecast(
       monthEnd
     );
 
-    for (const occurrenceDate of occurrenceDates) {
-      resolvedCharges.push({
-        source: "SUBSCRIPTION",
-        sourceId: subscription.id,
-        paymentMethodId: subscription.paymentMethodId,
-        amount: subscription.amount,
-        chargeDate: occurrenceDate,
-        cashOutflowDate: resolveCashOutflowDate(paymentMethod, occurrenceDate),
-      });
+    for (const occurrence of occurrenceDates) {
+      resolvedCharges.push(
+        resolveSubscriptionCharge(subscription, occurrence, paymentMethod)
+      );
     }
   }
 
@@ -360,8 +446,8 @@ export function computeCumulativeExpenses(
       monthEnd
     );
 
-    for (const occurrenceDate of occurrenceDates) {
-      const cashOutflowDate = resolveCashOutflowDate(paymentMethod, occurrenceDate);
+    for (const occurrence of occurrenceDates) {
+      const cashOutflowDate = resolveCashOutflowDate(paymentMethod, occurrence.date);
       if (cashOutflowDate > monthEnd) {
         continue;
       }
@@ -458,19 +544,14 @@ export function computeDebtSummary(
       windowEnd
     );
 
-    for (const occurrenceDate of occurrenceDates) {
-      const cashOutflowDate = resolveCashOutflowDate(paymentMethod, occurrenceDate);
+    for (const occurrence of occurrenceDates) {
+      const cashOutflowDate = resolveCashOutflowDate(paymentMethod, occurrence.date);
       if (cashOutflowDate <= asOfDate) {
         continue; // already paid off
       }
-      debtCharges.push({
-        source: "SUBSCRIPTION",
-        sourceId: subscription.id,
-        paymentMethodId: subscription.paymentMethodId,
-        amount: subscription.amount,
-        chargeDate: occurrenceDate,
-        cashOutflowDate,
-      });
+      debtCharges.push(
+        resolveSubscriptionCharge(subscription, occurrence, paymentMethod)
+      );
     }
   }
 

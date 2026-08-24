@@ -111,7 +111,7 @@ export default async function PurchasesPage({
           <EmptyState>No purchases yet — add one to get started.</EmptyState>
         ) : sortMode === "date" ? (
           <div className={styles.flatScroll}>
-            <table className={styles.table}>
+            <table className={styles.table} data-stack>
               <thead>
                 <tr>
                   <th>Date</th>
@@ -125,8 +125,8 @@ export default async function PurchasesPage({
               <tbody>
                 {purchasesByDate.map((purchase) => (
                   <tr key={purchase.id}>
-                    <td>{formatDate(purchase.purchaseDate)}</td>
-                    <td>
+                    <td data-label="Date">{formatDate(purchase.purchaseDate)}</td>
+                    <td data-label="Category">
                       <span className={styles.categoryCell}>
                         {purchase.category.color && (
                           <span
@@ -137,12 +137,12 @@ export default async function PurchasesPage({
                         {purchase.category.name}
                       </span>
                     </td>
-                    <td>{purchase.merchant ?? "—"}</td>
-                    <td className={styles.amount}>
+                    <td data-label="Merchant">{purchase.merchant ?? "—"}</td>
+                    <td className={styles.amount} data-label="Amount">
                       {formatCurrency(purchase.amount.toString())}
                     </td>
-                    <td>{purchase.paymentMethod?.nickname ?? "Cash / none"}</td>
-                    <td>
+                    <td data-label="Payment method">{purchase.paymentMethod?.nickname ?? "Cash / none"}</td>
+                    <td data-label="">
                       <div className={styles.rowActions}>
                         <Link
                           className={styles.editLink}
@@ -187,7 +187,7 @@ export default async function PurchasesPage({
                   </summary>
 
                   <div className={styles.categoryScroll}>
-                    <table className={styles.table}>
+                    <table className={styles.table} data-stack>
                       <thead>
                         <tr>
                           <th>Date</th>
@@ -200,13 +200,13 @@ export default async function PurchasesPage({
                       <tbody>
                         {items.map((purchase) => (
                           <tr key={purchase.id}>
-                            <td>{formatDate(purchase.purchaseDate)}</td>
-                            <td>{purchase.merchant ?? "—"}</td>
-                            <td className={styles.amount}>
+                            <td data-label="Date">{formatDate(purchase.purchaseDate)}</td>
+                            <td data-label="Merchant">{purchase.merchant ?? "—"}</td>
+                            <td className={styles.amount} data-label="Amount">
                               {formatCurrency(purchase.amount.toString())}
                             </td>
-                            <td>{purchase.paymentMethod?.nickname ?? "Cash / none"}</td>
-                            <td>
+                            <td data-label="Payment method">{purchase.paymentMethod?.nickname ?? "Cash / none"}</td>
+                            <td data-label="">
                               <div className={styles.rowActions}>
                                 <Link
                                   className={styles.editLink}

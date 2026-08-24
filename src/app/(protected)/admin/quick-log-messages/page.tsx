@@ -23,6 +23,7 @@ export default async function QuickLogMessagesPage() {
     amount: formatCurrency(45.9),
     category: "Food",
     merchant: "Cafe",
+    paymentMethod: "Visa Gold",
   });
   const errorPreview = renderTemplate(errorTemplate, {
     error: "Missing or invalid bearer token.",

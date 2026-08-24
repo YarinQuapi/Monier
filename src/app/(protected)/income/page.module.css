@@ -74,11 +74,13 @@
 
 .fieldRow {
   display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
 }
 
 .fieldRow .field {
-  flex: 1;
+  flex: 1 1 14rem;
+  min-width: 0;
 }
 
 .field {
@@ -135,4 +137,20 @@
 
 .backLink:hover {
   color: var(--color-primary);
+}
+
+@media (max-width: 64rem) {
+  .rowActions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .submit {
+    width: 100%;
+    align-self: stretch;
+  }
+
+  .form {
+    max-width: 100%;
+  }
 }

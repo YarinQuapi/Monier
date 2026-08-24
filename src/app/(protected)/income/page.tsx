@@ -36,7 +36,7 @@ export default async function IncomePage() {
         {incomes.length === 0 ? (
           <EmptyState>No income logged yet — add one below.</EmptyState>
         ) : (
-          <table className={styles.table}>
+          <table className={styles.table} data-stack>
             <thead>
               <tr>
                 <th>Date</th>
@@ -49,15 +49,15 @@ export default async function IncomePage() {
             <tbody>
               {incomes.map((income) => (
                 <tr key={income.id}>
-                  <td>{formatDate(income.receivedAt)}</td>
-                  <td>
+                  <td data-label="Date">{formatDate(income.receivedAt)}</td>
+                  <td data-label="Type">
                     <Badge tone={income.type === "SALARY" ? "success" : "neutral"}>
                       {income.type === "SALARY" ? "Salary" : "Misc"}
                     </Badge>
                   </td>
-                  <td>{income.label}</td>
-                  <td className={styles.amount}>{formatCurrency(income.amount.toString())}</td>
-                  <td>
+                  <td data-label="Label">{income.label}</td>
+                  <td className={styles.amount} data-label="Amount">{formatCurrency(income.amount.toString())}</td>
+                  <td data-label="">
                     <div className={styles.rowActions}>
                       <Link
                         className={styles.editLink}

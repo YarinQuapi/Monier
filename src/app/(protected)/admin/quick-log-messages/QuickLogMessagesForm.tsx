@@ -31,9 +31,13 @@ export function QuickLogMessagesForm({
         <p className={styles.hint}>
           Shown when a purchase is logged. Placeholders:{" "}
           <code>{"{{amount}}"}</code>, <code>{"{{category}}"}</code>,{" "}
-          <code>{"{{merchant}}"}</code>. Optional block:{" "}
-          <code>{"{{#merchant}} at {{merchant}}{{/merchant}}"}</code> (only
-          included when a merchant was provided).
+          <code>{"{{merchant}}"}</code>, <code>{"{{paymentMethod}}"}</code>.
+          Optional blocks:{" "}
+          <code>{"{{#merchant}} at {{merchant}}{{/merchant}}"}</code>,{" "}
+          <code>
+            {"{{#paymentMethod}} on {{paymentMethod}}{{/paymentMethod}}"}
+          </code>{" "}
+          (only included when that value was provided).
         </p>
         <textarea
           id="successMessage"

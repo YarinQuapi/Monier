@@ -6,15 +6,15 @@ export const QUICK_LOG_SUCCESS_KEY = "quick_log.success_message";
 export const QUICK_LOG_ERROR_KEY = "quick_log.error_message";
 
 export const DEFAULT_QUICK_LOG_SUCCESS =
-  "Logged {{amount}}{{#merchant}} at {{merchant}}{{/merchant}} ({{category}}).";
+  "Logged {{amount}}{{#merchant}} at {{merchant}}{{/merchant}} ({{category}}){{#paymentMethod}} on {{paymentMethod}}{{/paymentMethod}}.";
 
 export const DEFAULT_QUICK_LOG_ERROR =
   "Couldn't log purchase: {{error}}";
 
 /**
  * Very small template language:
- * - `{{amount}}`, `{{category}}`, `{{merchant}}`, `{{error}}` → replaced with values
- * - `{{#merchant}}...{{/merchant}}` → included only when merchant is non-empty
+ * - `{{amount}}`, `{{category}}`, `{{merchant}}`, `{{paymentMethod}}`, `{{error}}` → replaced with values
+ * - `{{#merchant}}...{{/merchant}}` / `{{#paymentMethod}}...{{/paymentMethod}}` → included only when that value is non-empty
  */
 export function renderTemplate(
   template: string,
@@ -66,6 +66,7 @@ export async function formatQuickLogSuccessMessage(vars: {
   amount: number;
   category: string;
   merchant: string | null;
+  paymentMethod?: string | null;
 }): Promise<string> {
   const template = await getAppSetting(
     QUICK_LOG_SUCCESS_KEY,
@@ -75,6 +76,7 @@ export async function formatQuickLogSuccessMessage(vars: {
     amount: formatCurrency(vars.amount),
     category: vars.category,
     merchant: vars.merchant,
+    paymentMethod: vars.paymentMethod,
   });
 }
 

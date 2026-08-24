@@ -32,13 +32,49 @@
   padding-right: 0.4rem;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 64rem) {
   .grid {
     grid-template-columns: 1fr;
   }
 
   .gridCard {
-    max-height: 70vh;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .cardScroll {
+    overflow: visible;
+  }
+
+  .statGrid3 {
+    grid-template-columns: 1fr;
+  }
+
+  .monthNav {
+    gap: 0.5rem;
+  }
+
+  .monthNavTitle {
+    min-width: 0;
+  }
+
+  .navLink {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .lineListHeader {
+    display: none;
+  }
+
+  .lineItemSummary {
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+  }
+
+  .amount {
+    white-space: normal;
   }
 }
 
@@ -219,4 +255,137 @@
   color: var(--color-text-muted);
   max-height: 220px;
   overflow-y: auto;
+}
+
+.subsectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.45rem;
+}
+
+.subsectionHeader h3 {
+  margin-bottom: 0;
+}
+
+.sectionHint {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  margin-bottom: 0.85rem;
+}
+
+.viewToggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.subsectionHeader .viewToggle {
+  margin-bottom: 0;
+}
+
+.viewToggleLink,
+.filterChip {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.viewToggleLink:hover,
+.filterChip:hover {
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+}
+
+.viewToggleLinkActive,
+.viewToggleLinkActive:hover,
+.filterChipActive,
+.filterChipActive:hover {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-text);
+  border-color: transparent;
+}
+
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
+}
+
+.chargeMethod {
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0.45rem;
+}
+
+.chargeSubscriptionLabel {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.subscriptionGroup {
+  list-style: none;
+}
+
+.subscriptionGroupDetails {
+  width: 100%;
+}
+
+.subscriptionGroupSummary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.45rem;
+}
+
+.subscriptionGroupSummary::-webkit-details-marker {
+  display: none;
+}
+
+.subscriptionGroupSummary::before {
+  content: "▸";
+  display: inline-block;
+  color: var(--color-primary);
+  transition: transform 0.15s ease;
+  margin-right: 0.15rem;
+}
+
+.subscriptionGroupDetails[open] .subscriptionGroupSummary::before {
+  transform: rotate(90deg);
+}
+
+.subscriptionGroupMeta {
+  flex-basis: 100%;
+  padding-left: 1.1rem;
+  font-size: 0.82rem;
+}
+
+.subscriptionInstallmentList {
+  margin: 0.35rem 0 0 1.1rem;
+  padding: 0.5rem 0.65rem;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  border-left: 2px solid var(--color-border);
+  font-size: 0.82rem;
+}
+
+@media (max-width: 64rem) {
+  .viewToggleLink,
+  .filterChip {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
 }

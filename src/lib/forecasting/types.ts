@@ -34,6 +34,10 @@ export interface PurchaseInput {
 export interface SubscriptionInput {
   id: string;
   paymentMethodId: string;
+  /** Provider / organization name (e.g. Netflix, Spotify). */
+  providerName: string;
+  /** User-defined label distinguishing multiple accounts at the same provider. */
+  accountLabel: string;
   amount: number;
   billingType: SubscriptionBillingKind;
   /** Day of month the charge occurs (clamped to shorter months). For
@@ -58,6 +62,13 @@ export interface BillingCycle {
 
 export type ChargeSource = "PURCHASE" | "SUBSCRIPTION";
 
+/** One expanded billing occurrence of a subscription. */
+export interface SubscriptionOccurrence {
+  date: Date;
+  /** 1-based index within the subscription schedule (month 1, month 2, …). */
+  installmentNumber: number;
+}
+
 /** A single resolved charge occurrence, with both dates it cares about. */
 export interface ResolvedCharge {
   source: ChargeSource;
@@ -69,6 +80,14 @@ export interface ResolvedCharge {
   chargeDate: Date;
   /** The date cash actually leaves the user's account for this charge. */
   cashOutflowDate: Date;
+  /** Populated when source = SUBSCRIPTION. */
+  subscriptionProviderName?: string;
+  subscriptionAccountLabel?: string;
+  subscriptionBillingType?: SubscriptionBillingKind;
+  /** 1-based installment index; meaningful for all subscription charges. */
+  installmentNumber?: number;
+  /** Total installments for FIXED_TERM subscriptions. */
+  totalInstallments?: number;
 }
 
 export interface EomForecastLineItem {
@@ -84,6 +103,14 @@ export interface EomForecastResult {
   /** Total estimated cash required by the end of the reference month. */
   total: number;
   lineItems: EomForecastLineItem[];
+}
+
+/** Forecast charges split by whether their due date has already passed. */
+export interface SettledForecastSplit {
+  remaining: EomForecastLineItem[];
+  remainingTotal: number;
+  settled: EomForecastLineItem[];
+  settledTotal: number;
 }
 
 export type IncomeKind = "SALARY" | "MISC";

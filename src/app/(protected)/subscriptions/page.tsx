@@ -58,7 +58,7 @@ export default async function SubscriptionsPage({
         {subscriptions.length === 0 ? (
           <EmptyState>No subscriptions yet — add one below.</EmptyState>
         ) : (
-          <table className={styles.table}>
+          <table className={styles.table} data-stack>
             <thead>
               <tr>
                 <th>Provider</th>
@@ -74,14 +74,14 @@ export default async function SubscriptionsPage({
                   key={sub.id}
                   className={sub.isActive ? undefined : styles.inactive}
                 >
-                  <td>
+                  <td data-label="Provider">
                     <span className={styles.providerCell}>{sub.providerName}</span>
                     <br />
                     <small className={styles.muted}>{sub.accountLabel}</small>
                   </td>
-                  <td className={styles.amount}>{formatCurrency(sub.amount.toString())}</td>
-                  <td>{sub.paymentMethod.nickname}</td>
-                  <td>
+                  <td className={styles.amount} data-label="Amount">{formatCurrency(sub.amount.toString())}</td>
+                  <td data-label="Payment method">{sub.paymentMethod.nickname}</td>
+                  <td data-label="Billing">
                     <Badge tone={sub.billingType === "FIXED_TERM" ? "warning" : "primary"}>
                       {sub.billingType === "FIXED_TERM"
                         ? `Fixed term: ${sub.totalMonths}mo`
@@ -92,7 +92,7 @@ export default async function SubscriptionsPage({
                     <br />
                     <small className={styles.muted}>from {formatDate(sub.startDate)}</small>
                   </td>
-                  <td>
+                  <td data-label="">
                     <div className={styles.rowActions}>
                       <Link
                         className={styles.editLink}

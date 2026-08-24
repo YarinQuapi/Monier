@@ -65,3 +65,33 @@
 .primary:hover {
   background: var(--color-primary-hover);
 }
+
+@media (max-width: 64rem) {
+  .page {
+    padding: calc(1.5rem + env(safe-area-inset-top))
+      calc(1.15rem + env(safe-area-inset-right))
+      calc(1.5rem + env(safe-area-inset-bottom))
+      calc(1.15rem + env(safe-area-inset-left));
+  }
+
+  .title {
+    font-size: 1.55rem;
+  }
+
+  .subtitle {
+    font-size: 0.95rem;
+  }
+
+  .ctas {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .primary {
+    width: 100%;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}

@@ -180,6 +180,7 @@
 
 .rowActions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
   justify-content: flex-end;
@@ -206,11 +207,13 @@
 
 .fieldRow {
   display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
 }
 
 .fieldRow .field {
-  flex: 1;
+  flex: 1 1 14rem;
+  min-width: 0;
 }
 
 .field {
@@ -320,6 +323,40 @@
 .modalClose:hover {
   background: var(--color-surface-muted);
   color: var(--color-text);
+}
+
+@media (max-width: 64rem) {
+  .categoryGroupHeader {
+    flex-wrap: wrap;
+  }
+
+  .categoryGroupMeta {
+    white-space: normal;
+  }
+
+  .rowActions {
+    justify-content: flex-start;
+  }
+
+  .submit {
+    width: 100%;
+    align-self: stretch;
+  }
+
+  .form {
+    max-width: 100%;
+  }
+
+  .modalOverlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .modalPanel {
+    max-height: min(92dvh, 100%);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  }
 }
 
 @keyframes overlayFadeIn {

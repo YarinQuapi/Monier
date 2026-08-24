@@ -20,5 +20,8 @@ export async function GET(request: Request) {
     orderBy: { name: "asc" },
   });
 
-  return NextResponse.json({ categories });
+  return NextResponse.json({
+    categories,
+    names: categories.map((category) => category.name),
+  });
 }
