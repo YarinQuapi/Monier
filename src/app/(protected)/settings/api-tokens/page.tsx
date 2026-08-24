@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { createApiToken, revokeApiToken } from "./actions";
 import { ApiTokenForm } from "./ApiTokenForm";
+import { ShortcutQrForm } from "./ShortcutQrForm";
 import styles from "./page.module.css";
 
 function formatDateTime(date: Date | null): string {
@@ -17,6 +18,8 @@ function formatDateTime(date: Date | null): string {
     timeStyle: "short",
   }).format(date);
 }
+
+export const maxDuration = 60;
 
 export default async function ApiTokensPage() {
   const session = await verifySession();
@@ -47,6 +50,14 @@ export default async function ApiTokensPage() {
         title="Quick-log API tokens"
         description="Personal access tokens for logging purchases from outside the web app — e.g. an iOS Shortcut you trigger right after paying."
       />
+
+      <Card>
+        <h2 className={styles.sectionTitle}>iPhone Shortcut</h2>
+        <ShortcutQrForm
+          categories={categories}
+          paymentMethods={paymentMethods}
+        />
+      </Card>
 
       <Card>
         <h2 className={styles.sectionTitle}>How it works</h2>

@@ -57,7 +57,8 @@ model User {
   subscriptions     Subscription[]
   purchases         Purchase[]
   categoriesCreated Category[]      @relation("CategoryCreatedBy")
-  apiTokens         ApiToken[]
+  apiTokens           ApiToken[]
+  iosShortcutInstalls IosShortcutInstall[]
 
   @@index([role])
 }
@@ -206,9 +207,29 @@ model ApiToken {
   lastUsedAt DateTime?
   createdAt  DateTime  @default(now())
 
+  iosShortcutInstalls IosShortcutInstall[]
+
   @@index([userId])
   @@index([defaultCategoryId])
   @@index([defaultPaymentMethodId])
+}
+
+/// A signed iOS Shortcut file the user can install by scanning a QR code.
+/// The file has the API token baked in, so the download URL is a secret
+/// (anyone with the link can log purchases until the token is revoked).
+model IosShortcutInstall {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apiTokenId String?
+  apiToken   ApiToken?  @relation(fields: [apiTokenId], references: [id], onDelete: SetNull)
+  file       Bytes
+  createdAt  DateTime   @default(now())
+  expiresAt  DateTime
+
+  @@index([userId])
+  @@index([apiTokenId])
+  @@index([expiresAt])
 }
 
 /// Global key/value settings (admin-managed). Used for iOS Shortcut
