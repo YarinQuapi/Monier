@@ -32,6 +32,7 @@ export function ShortcutQrForm({
   );
   const [qrSrc, setQrSrc] = useState<string | null>(null);
   const [askCategory, setAskCategory] = useState(true);
+  const [applePayAutoLog, setApplePayAutoLog] = useState(false);
 
   const success = state && "installUrl" in state ? state : null;
   const error = state && "error" in state ? state.error : null;
@@ -83,6 +84,30 @@ export function ShortcutQrForm({
           this QR can log purchases until you revoke that token. Link expires{" "}
           {expires}.
         </p>
+        {success.applePayAutoLog && (
+          <ol className={styles.setupSteps}>
+            <li>Add the Shortcut from the QR.</li>
+            <li>
+              Open <strong>Shortcuts → Automation → +</strong>
+            </li>
+            <li>
+              Choose <strong>Transaction</strong> (under Wallet &amp; Apple
+              Pay).
+            </li>
+            <li>
+              Select the cards you use, then <strong>Run Immediately</strong>{" "}
+              and turn off Ask Before Running.
+            </li>
+            <li>
+              Add action <strong>Run Shortcut</strong> and pick{" "}
+              <strong>{success.name}</strong>.
+            </li>
+            <li>
+              In Finance, name each payment method the same as the card in
+              Wallet (the name Apple Pay shows).
+            </li>
+          </ol>
+        )}
         <a className={styles.downloadLink} href={success.installUrl}>
           Open install page
         </a>
@@ -93,10 +118,29 @@ export function ShortcutQrForm({
   return (
     <form action={formAction} className={styles.form}>
       <p className={styles.helpText}>
-        Choose what the Shortcut should ask each time. Unchecked fields use
-        the defaults below (or cash, if no card is selected). This creates a
-        new token and bakes it into the Shortcut.
+        Choose what the Shortcut should ask each time, or turn on Apple Pay
+        auto-log. Unchecked fields use the defaults below (or cash, if no card
+        is selected). This creates a new token and bakes it into the Shortcut.
       </p>
+
+      <label className={styles.checkItem}>
+        <input
+          type="checkbox"
+          name="applePayAutoLog"
+          value="true"
+          checked={applePayAutoLog}
+          onChange={(event) => setApplePayAutoLog(event.target.checked)}
+        />
+        Auto-log when I pay with Apple Pay
+      </label>
+      {applePayAutoLog && (
+        <p className={styles.helpText}>
+          After you add the Shortcut, create a Shortcuts Automation with the
+          Transaction trigger. It will send amount, merchant, and card from
+          Apple Pay. Pick a default category below (Apple Pay does not send
+          one). Name your cards in Finance to match Wallet.
+        </p>
+      )}
 
       <div className={styles.field}>
         <label htmlFor="shortcutName">Shortcut / token name</label>
@@ -104,11 +148,14 @@ export function ShortcutQrForm({
           id="shortcutName"
           name="name"
           type="text"
-          defaultValue="iPhone Shortcut"
+          key={applePayAutoLog ? "apple-pay" : "manual"}
+          defaultValue={
+            applePayAutoLog ? "Apple Pay Auto Log" : "iPhone Shortcut"
+          }
         />
       </div>
 
-      <fieldset className={styles.checkList}>
+      <fieldset className={styles.checkList} disabled={applePayAutoLog}>
         <legend>Ask each time</legend>
         <label className={styles.checkItem}>
           <input
@@ -137,16 +184,19 @@ export function ShortcutQrForm({
       <div className={styles.fieldRow}>
         <div className={styles.field}>
           <label htmlFor="shortcutDefaultCategoryId">
-            Default category {askCategory ? "(optional)" : ""}
+            Default category{" "}
+            {applePayAutoLog || !askCategory ? "" : "(optional)"}
           </label>
           <select
             id="shortcutDefaultCategoryId"
             name="defaultCategoryId"
             defaultValue=""
-            required={!askCategory}
+            required={applePayAutoLog || !askCategory}
           >
             <option value="">
-              {askCategory ? "None — ask each time" : "Choose a category"}
+              {applePayAutoLog || !askCategory
+                ? "Choose a category"
+                : "None — ask each time"}
             </option>
             {categories.map((category) => (
               <option key={category.id} value={category.id}>

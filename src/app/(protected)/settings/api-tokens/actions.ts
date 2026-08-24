@@ -69,7 +69,12 @@ export async function createApiToken(
 
 export type IosShortcutFormState =
   | { error: string }
-  | { installUrl: string; name: string; expiresAt: string }
+  | {
+      installUrl: string;
+      name: string;
+      expiresAt: string;
+      applePayAutoLog: boolean;
+    }
   | undefined;
 
 const SHORTCUT_TTL_DAYS = 30;
@@ -93,11 +98,18 @@ export async function generateIosShortcut(
   const session = await verifySession();
   const requestHeaders = await headers();
 
-  const name = String(formData.get("name") ?? "").trim() || "iPhone Shortcut";
-  const askCategory = checkboxOn(formData, "askCategory");
-  const askCard = checkboxOn(formData, "askCard");
-  const askMerchant = checkboxOn(formData, "askMerchant");
-  const askNotes = checkboxOn(formData, "askNotes");
+  const applePayAutoLog = checkboxOn(formData, "applePayAutoLog");
+  const name =
+    String(formData.get("name") ?? "").trim() ||
+    (applePayAutoLog ? "Apple Pay Auto Log" : "iPhone Shortcut");
+  const askCategory = applePayAutoLog
+    ? false
+    : checkboxOn(formData, "askCategory");
+  const askCard = applePayAutoLog ? false : checkboxOn(formData, "askCard");
+  const askMerchant = applePayAutoLog
+    ? false
+    : checkboxOn(formData, "askMerchant");
+  const askNotes = applePayAutoLog ? false : checkboxOn(formData, "askNotes");
   const defaultCategoryIdRaw = String(formData.get("defaultCategoryId") ?? "").trim();
   const defaultPaymentMethodIdRaw = String(
     formData.get("defaultPaymentMethodId") ?? ""
@@ -150,8 +162,12 @@ export async function generateIosShortcut(
       askCard,
       askMerchant,
       askNotes,
+      applePayAutoLog,
     });
-    const signed = await signIosShortcut(workflow);
+    const signed = await signIosShortcut(
+      workflow,
+      applePayAutoLog ? "Apple Pay Auto Log" : "Log Purchase"
+    );
 
     const token = await prisma.apiToken.create({
       data: {
@@ -178,6 +194,7 @@ export async function generateIosShortcut(
       installUrl: `${origin}/s/${install.id}`,
       name,
       expiresAt: expiresAt.toISOString(),
+      applePayAutoLog,
     };
   } catch (error) {
     return {

@@ -74,6 +74,21 @@
   border: 1px solid var(--color-border);
 }
 
+.setupSteps {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.setupSteps li {
+  padding-left: 0.15rem;
+}
+
 .qrPlaceholder {
   width: 240px;
   height: 240px;

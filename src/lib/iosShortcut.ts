@@ -14,6 +14,8 @@ export type IosShortcutOptions = {
   askCard: boolean;
   askMerchant: boolean;
   askNotes: boolean;
+  /** When true, reads amount/merchant/card from an Apple Pay Transaction automation. */
+  applePayAutoLog?: boolean;
 };
 
 type PlistValue =
@@ -60,6 +62,21 @@ function magicAttachment(outputUuid: string, outputName: string): PlistValue {
     },
     WFSerializationType: "WFTextTokenAttachment",
   };
+}
+
+function shortcutInputProperty(propertyName: string): PlistValue {
+  return tokenString(OBJECT_REPLACEMENT, {
+    "{0, 1}": {
+      Type: "ExtensionInput",
+      VariableName: "Shortcut Input",
+      Aggrandizements: [
+        {
+          Type: "WFPropertyVariableAggrandizement",
+          PropertyName: propertyName,
+        },
+      ],
+    },
+  });
 }
 
 function joined(prefixUuid: string, prefixName: string, suffix: string): PlistValue {
@@ -182,6 +199,12 @@ function fetchUrl(params: {
 export function buildIosShortcutWorkflow(
   options: IosShortcutOptions
 ): PlistValue {
+  const applePayAutoLog = options.applePayAutoLog === true;
+  const askCategory = applePayAutoLog ? false : options.askCategory;
+  const askCard = applePayAutoLog ? false : options.askCard;
+  const askMerchant = applePayAutoLog ? false : options.askMerchant;
+  const askNotes = applePayAutoLog ? false : options.askNotes;
+
   const baseUrl = options.baseUrl.replace(/\/+$/, "");
   const baseUuid = newUuid();
   const tokenUuid = newUuid();
@@ -200,17 +223,20 @@ export function buildIosShortcutWorkflow(
   const resultDictUuid = newUuid();
   const messageUuid = newUuid();
 
-  const promptParts = ["amount"];
-  if (options.askCategory) promptParts.push("category");
-  if (options.askCard) promptParts.push("card");
-  if (options.askMerchant) promptParts.push("merchant");
-  if (options.askNotes) promptParts.push("notes");
+  const promptParts = applePayAutoLog
+    ? ["Apple Pay amount", "card", "merchant"]
+    : ["amount"];
+  if (askCategory) promptParts.push("category");
+  if (askCard) promptParts.push("card");
+  if (askMerchant) promptParts.push("merchant");
+  if (askNotes) promptParts.push("notes");
 
   const actions: PlistValue[] = [
     action("is.workflow.actions.comment", {
-      WFCommentActionText:
-        "Logs a purchase to Finance. The Text actions below hold your app URL and API token — leave them as-is.\n\n" +
-        `Each run asks for: ${promptParts.join(" → ")}.`,
+      WFCommentActionText: applePayAutoLog
+        ? "Apple Pay auto-log for Finance. Run this from a Shortcuts Automation with the Transaction trigger (Wallet & Apple Pay). It reads amount, merchant, and card from that payment. Category uses the token default. Rename cards in Finance to match the Wallet card name."
+        : "Logs a purchase to Finance. The Text actions below hold your app URL and API token — leave them as-is.\n\n" +
+          `Each run asks for: ${promptParts.join(" → ")}.`,
     }),
     action("is.workflow.actions.gettext", {
       UUID: baseUuid,
@@ -222,15 +248,20 @@ export function buildIosShortcutWorkflow(
       CustomOutputName: "Token",
       WFTextActionText: options.token,
     }),
-    action("is.workflow.actions.ask", {
-      UUID: amountUuid,
-      CustomOutputName: "Amount",
-      WFAskActionPrompt: "How much did it cost?",
-      WFInputType: "Number",
-    }),
   ];
 
-  if (options.askMerchant) {
+  if (!applePayAutoLog) {
+    actions.push(
+      action("is.workflow.actions.ask", {
+        UUID: amountUuid,
+        CustomOutputName: "Amount",
+        WFAskActionPrompt: "How much did it cost?",
+        WFInputType: "Number",
+      })
+    );
+  }
+
+  if (askMerchant) {
     actions.push(
       action("is.workflow.actions.ask", {
         UUID: merchantUuid,
@@ -241,7 +272,7 @@ export function buildIosShortcutWorkflow(
     );
   }
 
-  if (options.askNotes) {
+  if (askNotes) {
     actions.push(
       action("is.workflow.actions.ask", {
         UUID: notesUuid,
@@ -252,7 +283,7 @@ export function buildIosShortcutWorkflow(
     );
   }
 
-  if (options.askCategory) {
+  if (askCategory) {
     actions.push(
       ...fetchUrl({
         uuid: categoriesUrlUuid,
@@ -281,7 +312,7 @@ export function buildIosShortcutWorkflow(
     );
   }
 
-  if (options.askCard) {
+  if (askCard) {
     actions.push(
       ...fetchUrl({
         uuid: cardsUrlUuid,
@@ -310,19 +341,23 @@ export function buildIosShortcutWorkflow(
     );
   }
 
-  const jsonItems: PlistValue[] = [
-    dictItem("amount", magic(amountUuid, "Amount")),
-  ];
-  if (options.askCategory) {
+  const jsonItems: PlistValue[] = applePayAutoLog
+    ? [
+        dictItem("amount", shortcutInputProperty("Amount")),
+        dictItem("merchant", shortcutInputProperty("Merchant")),
+        dictItem("paymentMethod", shortcutInputProperty("Card or Pass")),
+      ]
+    : [dictItem("amount", magic(amountUuid, "Amount"))];
+  if (askCategory) {
     jsonItems.push(dictItem("category", magic(categoryUuid, "Category")));
   }
-  if (options.askCard) {
+  if (askCard) {
     jsonItems.push(dictItem("paymentMethod", magic(cardUuid, "Card")));
   }
-  if (options.askMerchant) {
+  if (askMerchant) {
     jsonItems.push(dictItem("merchant", magic(merchantUuid, "Merchant")));
   }
-  if (options.askNotes) {
+  if (askNotes) {
     jsonItems.push(dictItem("notes", magic(notesUuid, "Notes")));
   }
 
@@ -350,10 +385,15 @@ export function buildIosShortcutWorkflow(
       WFNotificationActionTitle: "Purchase logged",
       WFNotificationActionBody: magic(messageUuid, "Message"),
     }),
-    action("is.workflow.actions.showresult", {
-      Text: magic(messageUuid, "Message"),
-    })
   );
+
+  if (!applePayAutoLog) {
+    actions.push(
+      action("is.workflow.actions.showresult", {
+        Text: magic(messageUuid, "Message"),
+      })
+    );
+  }
 
   return {
     WFWorkflowClientVersion: "3306.0.4",
@@ -369,16 +409,19 @@ export function buildIosShortcutWorkflow(
     WFWorkflowImportQuestions: [],
     WFWorkflowInputContentItemClasses: [],
     WFWorkflowOutputContentItemClasses: [],
-    WFWorkflowHasShortcutInputVariables: false,
+    WFWorkflowHasShortcutInputVariables: applePayAutoLog,
     WFWorkflowHasOutputFallback: false,
     WFWorkflowActions: actions,
   };
 }
 
-export async function signIosShortcut(workflow: PlistValue): Promise<Buffer> {
+export async function signIosShortcut(
+  workflow: PlistValue,
+  shortcutName = "Log Purchase"
+): Promise<Buffer> {
   const xml = workflowXml(workflow);
   const payload = JSON.stringify({
-    shortcutName: "Log Purchase",
+    shortcutName,
     shortcut: xml,
   });
   const headers = {

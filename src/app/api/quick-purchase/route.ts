@@ -196,10 +196,22 @@ async function resolvePaymentMethod(
       where: { userId, isActive: true },
       select: { id: true, nickname: true },
     });
-    const needle = paymentMethodName.toLowerCase();
-    const matched = matches.filter(
+    const needle = paymentMethodName.trim().toLowerCase();
+    let matched = matches.filter(
       (method) => method.nickname.trim().toLowerCase() === needle
     );
+    if (matched.length === 0) {
+      const compactNeedle = needle.replace(/[^a-z0-9]/g, "");
+      matched = matches.filter((method) => {
+        const compactNickname = method.nickname.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+        return (
+          compactNickname.length > 0 &&
+          (compactNickname === compactNeedle ||
+            compactNeedle.includes(compactNickname) ||
+            compactNickname.includes(compactNeedle))
+        );
+      });
+    }
 
     if (matched.length === 0) {
       return { error: `Unknown payment method: ${paymentMethodName}` };
