@@ -62,6 +62,26 @@ function magicAttachment(outputUuid: string, outputName: string): PlistValue {
   };
 }
 
+function joined(prefixUuid: string, prefixName: string, suffix: string): PlistValue {
+  return tokenString(OBJECT_REPLACEMENT + suffix, {
+    "{0, 1}": {
+      OutputName: prefixName,
+      OutputUUID: prefixUuid,
+      Type: "ActionOutput",
+    },
+  });
+}
+
+function bearer(tokenUuid: string): PlistValue {
+  return tokenString(`Bearer ${OBJECT_REPLACEMENT}`, {
+    "{7, 1}": {
+      OutputName: "Token",
+      OutputUUID: tokenUuid,
+      Type: "ActionOutput",
+    },
+  });
+}
+
 function dictItem(key: string, value: PlistValue): PlistValue {
   return {
     WFItemType: 0,
@@ -77,9 +97,9 @@ function dictionaryField(items: PlistValue[]): PlistValue {
   };
 }
 
-function authHeaders(token: string): PlistValue {
+function authHeaders(tokenUuid: string): PlistValue {
   return dictionaryField([
-    dictItem("Authorization", tokenString(`Bearer ${token}`)),
+    dictItem("Authorization", bearer(tokenUuid)),
     dictItem("Accept", tokenString("application/json")),
   ]);
 }
@@ -137,17 +157,18 @@ function getContentsOfUrl(params: {
   uuid: string;
   outputName: string;
   method: "GET" | "POST";
-  url: string;
-  token: string;
+  url: PlistValue;
+  tokenUuid: string;
   jsonValues?: PlistValue;
 }): PlistValue {
   const parameters: { [key: string]: PlistValue } = {
     UUID: params.uuid,
     CustomOutputName: params.outputName,
-    ShowHeaders: false,
+    Advanced: true,
+    ShowHeaders: true,
     WFHTTPMethod: params.method,
-    WFURL: tokenString(params.url),
-    WFHTTPHeaders: authHeaders(params.token),
+    WFURL: params.url,
+    WFHTTPHeaders: authHeaders(params.tokenUuid),
   };
   if (params.method === "POST") {
     parameters.WFHTTPBodyType = "JSON";
@@ -162,6 +183,8 @@ export function buildIosShortcutWorkflow(
   options: IosShortcutOptions
 ): PlistValue {
   const baseUrl = options.baseUrl.replace(/\/+$/, "");
+  const baseUuid = newUuid();
+  const tokenUuid = newUuid();
   const amountUuid = newUuid();
   const merchantUuid = newUuid();
   const notesUuid = newUuid();
@@ -186,8 +209,18 @@ export function buildIosShortcutWorkflow(
   const actions: PlistValue[] = [
     action("is.workflow.actions.comment", {
       WFCommentActionText:
-        "Logs a purchase to Finance. URL and token are already filled in.\n\n" +
+        "Logs a purchase to Finance. The Text actions below hold your app URL and API token — leave them as-is.\n\n" +
         `Each run asks for: ${promptParts.join(" → ")}.`,
+    }),
+    action("is.workflow.actions.gettext", {
+      UUID: baseUuid,
+      CustomOutputName: "Base URL",
+      WFTextActionText: tokenString(baseUrl),
+    }),
+    action("is.workflow.actions.gettext", {
+      UUID: tokenUuid,
+      CustomOutputName: "Token",
+      WFTextActionText: tokenString(options.token),
     }),
     action("is.workflow.actions.ask", {
       UUID: amountUuid,
@@ -225,8 +258,8 @@ export function buildIosShortcutWorkflow(
         uuid: categoriesUrlUuid,
         outputName: "Categories response",
         method: "GET",
-        url: `${baseUrl}/api/categories`,
-        token: options.token,
+        url: joined(baseUuid, "Base URL", "/api/categories"),
+        tokenUuid,
       }),
       action("is.workflow.actions.detect.dictionary", {
         UUID: categoriesDictUuid,
@@ -254,8 +287,8 @@ export function buildIosShortcutWorkflow(
         uuid: cardsUrlUuid,
         outputName: "Cards response",
         method: "GET",
-        url: `${baseUrl}/api/payment-methods`,
-        token: options.token,
+        url: joined(baseUuid, "Base URL", "/api/payment-methods"),
+        tokenUuid,
       }),
       action("is.workflow.actions.detect.dictionary", {
         UUID: cardsDictUuid,
@@ -298,8 +331,8 @@ export function buildIosShortcutWorkflow(
       uuid: postUuid,
       outputName: "Purchase response",
       method: "POST",
-      url: `${baseUrl}/api/quick-purchase`,
-      token: options.token,
+      url: joined(baseUuid, "Base URL", "/api/quick-purchase"),
+      tokenUuid,
       jsonValues: dictionaryField(jsonItems),
     }),
     action("is.workflow.actions.detect.dictionary", {
